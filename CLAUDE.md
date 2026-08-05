@@ -4,6 +4,7 @@
 이 프로젝트는 초등학교 보건교육용 On-Device AI 손 세균 시각화 앱입니다.
 모든 기획 및 상세 로직은 `content/` 폴더 내의 마크다운(Obsidian) 문서에 정의되어 있습니다.
 
+
 - **프로젝트 개요 및 기술 스택**: `content/00_Overview.md`
 - **화면 흐름 및 상태 구조**: `content/01_Architecture_Flow.md`
 - **카메라 & MediaPipe AI 로직**: `content/02_Camera_and_AI.md`
