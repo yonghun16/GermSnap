@@ -60,8 +60,11 @@ export const CameraScreen = ({
       }
 
       onScanComplete(photo.uri, landmarks);
-    } catch {
-      // 02_Camera_and_AI.md: 손이 인식되지 않은 경우 예외 처리
+    } catch (error) {
+      // 02_Camera_and_AI.md: 손이 인식되지 않은 경우 예외 처리.
+      // "손 미인식"과 실제 오류(모델 로드 실패 등)를 사용자에게는 동일한 메시지로
+      // 보여주지만, 원인 파악을 위해 콘솔에는 실제 에러를 남긴다.
+      console.error('analyzeHandImage failed:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       playErrorSound();
       Alert.alert(
