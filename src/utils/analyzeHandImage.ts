@@ -1,6 +1,9 @@
 import type { Point3D } from '../types';
 import { getHandLandmarkModel } from './tfliteModel';
-import { imageToTensor } from './imageToTensor';
+import { decodeImage, rotatedCropToTensor, inverseRotatedPoint } from './mediapipe/tensorRender';
+import { detectPalm } from './mediapipe/palmDetector';
+import { computeHandRoi } from './mediapipe/handRoi';
+import { totalElements, toNumericArray } from './mediapipe/tensorUtils';
 
 const NUM_LANDMARKS = 21;
 const LANDMARK_TENSOR_LENGTH = NUM_LANDMARKS * 3; // x, y, z
@@ -12,43 +15,35 @@ const PRESENCE_THRESHOLD = 0.5;
 const resolveDim = (value: number | undefined, fallback: number) =>
   value && value > 0 ? value : fallback;
 
-const totalElements = (shape: number[]) =>
-  shape.reduce((acc, n) => acc * Math.max(n, 1), 1);
-
-const toNumericArray = (buffer: ArrayBuffer, dataType: string) => {
-  switch (dataType) {
-    case 'uint8':
-      return new Uint8Array(buffer);
-    case 'int8':
-      return new Int8Array(buffer);
-    default:
-      return new Float32Array(buffer);
-  }
-};
-
 /**
- * MediaPipe Hand Landmarker(hand_landmark_lite, 온디바이스 TFLite) 연동.
- * 정지 이미지 URI를 받아 21개 손 좌표(정규화된 x/y/z, 0.0~1.0)를 반환한다.
- * 손이 인식되지 않으면 null을 반환한다. (docs/content/02_Camera_and_AI.md)
- *
- * 팔 검출기(palm detector) 단계 없이 hand_landmark 모델만 단독으로 사용한다.
- * CameraScreen의 손 모양 가이드라인 UX가 팔 검출기 역할(위치/크기 정렬)을 대신하므로,
- * 손이 가이드라인 밖에 있거나 화면에서 너무 작게 찍히면 인식률이 떨어질 수 있다.
+ * MediaPipe Hand Landmarker 2단계 파이프라인(온디바이스 TFLite):
+ *   1) palm detector로 손바닥 위치 + 회전 정렬용 키포인트를 찾고
+ *   2) 손목→중지 MCP 벡터가 수직이 되도록 회전 정렬한 정사각 영역을 크롭해
+ *      hand_landmark 모델에 넣는다.
+ * 정지 이미지 URI를 받아 21개 손 좌표(정규화된 x/y/z, 0.0~1.0, 원본 사진 전체 기준)를
+ * 반환한다. 손이 인식되지 않으면 null을 반환한다. (docs/content/02_Camera_and_AI.md)
  */
 export const analyzeHandImage = async (uri: string): Promise<Point3D[] | null> => {
-  const model = await getHandLandmarkModel();
+  const image = await decodeImage(uri);
+  const imageWidth = image.width();
+  const imageHeight = image.height();
 
+  const palm = await detectPalm(image);
+  if (!palm) {
+    return null; // 02_Camera_and_AI.md: 손이 인식되지 않은 경우
+  }
+
+  const roi = computeHandRoi(palm, imageWidth, imageHeight);
+
+  const model = await getHandLandmarkModel();
   const inputTensor = model.inputs[0];
   const [, rawHeight, rawWidth] = inputTensor.shape; // NHWC: [batch, height, width, channels]
   const modelHeight = resolveDim(rawHeight, 224);
   const modelWidth = resolveDim(rawWidth, 224);
+  // 정사각(square_long) crop이므로 폭/높이 중 하나만 destSize로 사용해도 된다.
+  const destSize = Math.max(modelWidth, modelHeight);
 
-  const inputBuffer = await imageToTensor(uri, {
-    width: modelWidth,
-    height: modelHeight,
-    dataType: inputTensor.dataType,
-  });
-
+  const inputBuffer = rotatedCropToTensor(image, roi, destSize, inputTensor.dataType);
   const outputs = await model.run([inputBuffer]);
 
   // hand_landmark_lite는 [landmarks(63), presence(1), handedness(1), world_landmarks(63)]
@@ -81,13 +76,16 @@ export const analyzeHandImage = async (uri: string): Promise<Point3D[] | null> =
     model.outputs[landmarksIndex].dataType
   );
 
+  // 모델 출력은 회전 정렬된 crop 영역 기준 좌표이므로, 원본 사진 전체 기준
+  // 정규화 좌표로 역변환한다 (ResultScreen은 원본 사진 위에 그리므로).
   const landmarks: Point3D[] = [];
   for (let i = 0; i < NUM_LANDMARKS; i++) {
-    landmarks.push({
-      x: Number(landmarkValues[i * 3]) / modelWidth,
-      y: Number(landmarkValues[i * 3 + 1]) / modelHeight,
-      z: Number(landmarkValues[i * 3 + 2]) / modelWidth,
-    });
+    const xInCrop = Number(landmarkValues[i * 3]) / modelWidth;
+    const yInCrop = Number(landmarkValues[i * 3 + 1]) / modelHeight;
+    const z = Number(landmarkValues[i * 3 + 2]) / modelWidth;
+
+    const { x, y } = inverseRotatedPoint(xInCrop, yInCrop, roi, destSize, imageWidth, imageHeight);
+    landmarks.push({ x, y, z });
   }
 
   return landmarks;

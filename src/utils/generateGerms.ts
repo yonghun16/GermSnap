@@ -14,8 +14,11 @@ export interface GermObject {
 const GERM_BASE_SIZE = 24;
 const MIN_GERM_COUNT = 15;
 const MAX_GERM_COUNT = 30;
-const MIN_OFFSET_RADIUS = 20;
-const MAX_OFFSET_RADIUS = 40;
+// 원래 03_Germ_and_Clean_Rendering.md 스펙은 ±20~40px였지만, 실기기 테스트에서
+// 손가락 끝 등 가장자리 랜드마크 기준으로 이 정도 반경이면 세균이 손 밖으로
+// 튀어나가는 경우가 있어 더 촘촘하게 좁혔다.
+const MIN_OFFSET_RADIUS = 8;
+const MAX_OFFSET_RADIUS = 18;
 const MIN_OPACITY = 0.4;
 const MAX_OPACITY = 0.7;
 const MIN_SCALE = 0.8;

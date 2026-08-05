@@ -10,7 +10,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "손 세균을 스캔하려면 카메라 접근 권한이 필요해요."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.handgermscanner"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +21,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": ["android.permission.CAMERA"],
+      "package": "com.anonymous.handgermscanner"
     },
     "web": {
       "favicon": "./assets/favicon.png"

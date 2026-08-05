@@ -4,19 +4,18 @@
  *
  * 팀에서 준비할 실제 mp3 에셋이 아직 없어(assets/sounds/는 .gitkeep만 존재) 에셋
  * 이원화 원칙에 따라 현재는 안전하게 no-op으로 동작한다. 각 파일이 추가되면
- * 아래 주석을 해제해서 교체한다:
+ * 아래 주석을 해제해서 교체한다.
+ *
+ * 주의: expo-av는 현재 RN/Expo SDK 조합에서 네이티브 JSI ABI 불일치로
+ * 런타임에 UnsatisfiedLinkError(dlopen 실패)를 일으켜 앱이 시작하자마자
+ * 크래시했다 (실기기 확인됨). 대신 Expo가 권장하는 expo-audio를 사용한다.
  *
  * ```ts
- * import { Audio } from 'expo-av';
+ * import { createAudioPlayer } from 'expo-audio';
  *
- * const play = async (asset: number) => {
- *   const { sound } = await Audio.Sound.createAsync(asset);
- *   sound.setOnPlaybackStatusUpdate((status) => {
- *     if (status.isLoaded && status.didJustFinish) {
- *       sound.unloadAsync();
- *     }
- *   });
- *   await sound.playAsync();
+ * const play = (asset: number) => {
+ *   const player = createAudioPlayer(asset);
+ *   player.play();
  * };
  *
  * export const playScanSound = () => play(require('../../assets/sounds/scan.mp3'));

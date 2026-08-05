@@ -16,6 +16,12 @@ import type { WashMode, Point3D } from '../types';
 // 01_Architecture_Flow.md: Scan Loading Overlay 약 0.8초간 진동 + "스캔 중..." 연출
 const SCAN_OVERLAY_DURATION_MS = 800;
 
+// 가이드라인 영역 (미리보기 화면 기준 정규화 좌표, 0~1) — 순수 시각적 안내용.
+// 2단계 파이프라인(palm detector가 손 위치/크기/회전을 자동으로 찾음)이 되면서
+// 더 이상 이 영역으로 크롭하지는 않지만, 사용자가 손을 화면 안에 적당히 크게
+// 담도록 유도하는 역할은 여전히 유효하다.
+const GUIDE_RECT = { x: 0.08, y: 0.16, width: 0.84, height: 0.58 };
+
 interface CameraScreenProps {
   washMode: WashMode;
   onWashModeChange: (mode: WashMode) => void;
@@ -113,10 +119,27 @@ export const CameraScreen = ({
         </Pressable>
       </View>
 
-      {/* 손 모양 가이드라인 */}
-      <View pointerEvents="none" style={styles.guideWrapper}>
-        <View style={styles.guideShape} />
-        <Text style={styles.guideText}>손바닥을 가이드라인 안에 맞춰주세요</Text>
+      {/* 손 모양 가이드라인: GUIDE_RECT와 동일한 비율로 그려서 실제 크롭 영역과 일치시킨다 */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <View
+          style={[
+            styles.guideShape,
+            {
+              left: `${GUIDE_RECT.x * 100}%`,
+              top: `${GUIDE_RECT.y * 100}%`,
+              width: `${GUIDE_RECT.width * 100}%`,
+              height: `${GUIDE_RECT.height * 100}%`,
+            },
+          ]}
+        />
+        <View
+          style={[
+            styles.guideTextRow,
+            { top: `${(GUIDE_RECT.y + GUIDE_RECT.height) * 100}%` },
+          ]}
+        >
+          <Text style={styles.guideText}>손바닥을 가이드라인 안에 크게 맞춰주세요</Text>
+        </View>
       </View>
 
       {/* 촬영 버튼 */}
@@ -193,27 +216,24 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  guideWrapper: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   guideShape: {
-    width: 220,
-    height: 260,
-    borderRadius: 110,
+    position: 'absolute',
+    borderRadius: 32,
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.8)',
     borderStyle: 'dashed',
   },
+  guideTextRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    marginTop: 12,
+    alignItems: 'center',
+  },
   guideText: {
-    marginTop: 16,
     color: '#fff',
     fontSize: 13,
+    textAlign: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)',
     paddingHorizontal: 12,
     paddingVertical: 6,
