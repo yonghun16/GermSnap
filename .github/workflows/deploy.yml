@@ -24,14 +24,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Dependencies
-        run: npm ci
-      - name: Build Quartz
-        run: npx quartz build
+
+      # 1. docs/ 폴더 내부로 이동하여 패키지 설치 및 Quartz 빌드 실행
+      - name: Install Dependencies & Build Quartz
+        run: |
+          cd docs
+          npm ci
+          npx quartz build
+
+      # 2. docs/public 폴더에 생성된 결과물을 업로드 경로로 지정
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: docs/public
 
   deploy:
     needs: build
