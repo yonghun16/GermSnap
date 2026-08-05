@@ -5,7 +5,10 @@ import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import { GermSprite } from '../components/GermSprite';
 import { SparkleSprite } from '../components/SparkleSprite';
@@ -27,6 +30,12 @@ interface ResultScreenProps {
 // 03_Germ_and_Clean_Rendering.md: 최대 확대율 4.0x (손톱 밑 세균 밀착 관찰용)
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
+
+// 세균이 "눈에 잘 안 보일 만큼 작고 투명"하게 시작해서, 확대(pinch zoom)할수록
+// 또렷하고 커지도록 하는 리빌(reveal) 효과 — 맨눈으로 안 보이는 세균을 확대해야
+// 발견한다는 컨셉.
+const MIN_GERM_OPACITY_FACTOR = 0.08;
+const MIN_GERM_ZOOM_FACTOR = 0.35;
 
 export const ResultScreen = ({
   photoUri,
@@ -135,6 +144,14 @@ export const ResultScreen = ({
     ],
   }));
 
+  // 세균 리빌 효과: 확대 배율(scale)을 세균 레이어의 투명도/크기 배율로 매핑한다.
+  const germOpacityFactor = useDerivedValue(() =>
+    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_GERM_OPACITY_FACTOR, 1], Extrapolation.CLAMP)
+  );
+  const germZoomFactor = useDerivedValue(() =>
+    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_GERM_ZOOM_FACTOR, 1], Extrapolation.CLAMP)
+  );
+
   // 사진과 화면의 종횡비가 다를 수 있으므로(letterbox), 실제 사진이 표시되는
   // 영역을 기준으로 정규화 좌표를 픽셀로 변환한다.
   const displayRect = useMemo(() => {
@@ -171,17 +188,21 @@ export const ResultScreen = ({
             <Canvas style={StyleSheet.absoluteFill}>
               {germs.length > 0 && (
                 <Group opacity={isCleanMode ? 0 : 1}>
-                  {germs.map((germ) => (
-                    <GermSprite
-                      key={germ.id}
-                      x={germ.x}
-                      y={germ.y}
-                      size={germ.size}
-                      opacity={germ.opacity}
-                      rotation={germ.rotation}
-                      scale={germ.scale}
-                    />
-                  ))}
+                  {/* 확대할수록 또렷하고 커지는 리빌 효과 (히든 버튼의 on/off와는 별개 레이어) */}
+                  <Group opacity={germOpacityFactor}>
+                    {germs.map((germ) => (
+                      <GermSprite
+                        key={germ.id}
+                        x={germ.x}
+                        y={germ.y}
+                        size={germ.size}
+                        opacity={germ.opacity}
+                        rotation={germ.rotation}
+                        scale={germ.scale}
+                        zoomFactor={germZoomFactor}
+                      />
+                    ))}
+                  </Group>
                 </Group>
               )}
 

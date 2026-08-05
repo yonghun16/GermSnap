@@ -1,6 +1,8 @@
 import React from 'react';
 import { Group, Image } from '@shopify/react-native-skia';
 import type { SkImage } from '@shopify/react-native-skia';
+import { useDerivedValue } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { DummyGerm } from './DummyGerm';
 
 interface GermSpriteProps {
@@ -10,6 +12,8 @@ interface GermSpriteProps {
   opacity: number;
   rotation: number; // degrees
   scale: number;
+  /** 확대 정도에 따라 세균이 커지는 배율(1이면 원래 scale 그대로). */
+  zoomFactor: SharedValue<number>;
   pngAsset?: SkImage | null;
 }
 
@@ -25,10 +29,16 @@ export const GermSprite = ({
   opacity,
   rotation,
   scale,
+  zoomFactor,
   pngAsset,
 }: GermSpriteProps) => {
   const origin = { x: x + size / 2, y: y + size / 2 };
-  const transform = [{ rotate: (rotation * Math.PI) / 180 }, { scale }];
+  // zoomFactor(핀치 확대에 따라 변하는 공유값)를 곱해, 확대할수록 세균 각자의
+  // 위치(origin)는 그대로 두고 크기만 커지도록 한다.
+  const transform = useDerivedValue(() => [
+    { rotate: (rotation * Math.PI) / 180 },
+    { scale: scale * zoomFactor.value },
+  ]);
 
   return (
     <Group origin={origin} transform={transform}>
