@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import type { AppState } from './src/types';
@@ -29,30 +30,25 @@ export default function App() {
     setAppState((prev) => ({ ...prev, isCleanMode: !prev.isCleanMode }));
   };
 
-  if (!appState.photoUri) {
-    return (
-      <>
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      {appState.photoUri ? (
+        <ResultScreen
+          photoUri={appState.photoUri}
+          washMode={appState.washMode}
+          handLandmarks={appState.handLandmarks}
+          isCleanMode={appState.isCleanMode}
+          onToggleCleanMode={handleToggleCleanMode}
+          onRetake={handleRetake}
+        />
+      ) : (
         <CameraScreen
           washMode={appState.washMode}
           onWashModeChange={(washMode) => setAppState((prev) => ({ ...prev, washMode }))}
           onScanComplete={handleScanComplete}
         />
-        <StatusBar style="light" />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <ResultScreen
-        photoUri={appState.photoUri}
-        washMode={appState.washMode}
-        handLandmarks={appState.handLandmarks}
-        isCleanMode={appState.isCleanMode}
-        onToggleCleanMode={handleToggleCleanMode}
-        onRetake={handleRetake}
-      />
+      )}
       <StatusBar style="light" />
-    </>
+    </GestureHandlerRootView>
   );
 }

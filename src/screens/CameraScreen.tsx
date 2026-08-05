@@ -10,6 +10,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { analyzeHandImage } from '../utils/analyzeHandImage';
+import { playScanSound, playErrorSound } from '../utils/sound';
 import type { WashMode, Point3D } from '../types';
 
 // 01_Architecture_Flow.md: Scan Loading Overlay 약 0.8초간 진동 + "스캔 중..." 연출
@@ -44,6 +45,7 @@ export const CameraScreen = ({
 
       setIsScanning(true);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      playScanSound();
       await new Promise((resolve) => setTimeout(resolve, SCAN_OVERLAY_DURATION_MS));
 
       const landmarks = await analyzeHandImage(photo.uri);
@@ -54,6 +56,8 @@ export const CameraScreen = ({
       onScanComplete(photo.uri, landmarks);
     } catch {
       // 02_Camera_and_AI.md: 손이 인식되지 않은 경우 예외 처리
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      playErrorSound();
       Alert.alert(
         '손이 보이지 않아요!',
         '손이 잘 보이지 않아요. 손바닥이 화면 중앙에 오도록 다시 찍어주세요!'
