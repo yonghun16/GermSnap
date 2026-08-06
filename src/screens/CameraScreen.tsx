@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   Alert,
+  LayoutChangeEvent,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +11,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { analyzeHandImage } from '../utils/analyzeHandImage';
+import { cropPhotoToAspectRatio } from '../utils/cropToAspectRatio';
 import { playScanSound, playErrorSound } from '../utils/sound';
 import type { WashMode, Point3D } from '../types';
 
@@ -37,6 +39,12 @@ export const CameraScreen = ({
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+
+  const handlePreviewLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setPreviewSize({ width, height });
+  };
 
   const handleCapture = async () => {
     if (!cameraRef.current || !isCameraReady || isScanning) {
@@ -52,14 +60,28 @@ export const CameraScreen = ({
       setIsScanning(true);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       playScanSound();
+
+      // expo-camera 미리보기는 화면을 꽉 채우려고 사진을 잘라서 보여주므로(cover),
+      // 실제 촬영된 사진은 센서 원본 비율 그대로라 미리보기보다 화각이 넓다.
+      // 미리보기와 동일한 비율로 중앙 크롭해 "본 대로 찍힌다"를 보장한다.
+      const photoUri =
+        previewSize.width > 0 && previewSize.height > 0
+          ? await cropPhotoToAspectRatio(
+              photo.uri,
+              photo.width,
+              photo.height,
+              previewSize.width / previewSize.height
+            )
+          : photo.uri;
+
       await new Promise((resolve) => setTimeout(resolve, SCAN_OVERLAY_DURATION_MS));
 
-      const landmarks = await analyzeHandImage(photo.uri);
+      const landmarks = await analyzeHandImage(photoUri);
       if (!landmarks || landmarks.length === 0) {
         throw new Error('no-hand-detected');
       }
 
-      onScanComplete(photo.uri, landmarks);
+      onScanComplete(photoUri, landmarks);
     } catch (error) {
       // 02_Camera_and_AI.md: 손이 인식되지 않은 경우 예외 처리.
       // "손 미인식"과 실제 오류(모델 로드 실패 등)를 사용자에게는 동일한 메시지로
@@ -94,7 +116,7 @@ export const CameraScreen = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handlePreviewLayout}>
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
