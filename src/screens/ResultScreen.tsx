@@ -1,10 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Canvas, Group } from '@shopify/react-native-skia';
+import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Canvas,
+  Group,
+  Image,
+  Rect,
+  useImage,
+  FilterMode,
+  MipmapMode,
+} from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useAnimatedStyle,
+import {
   useDerivedValue,
   useSharedValue,
   interpolate,
@@ -12,10 +19,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { GermSprite } from '../components/GermSprite';
 import { SparkleSprite } from '../components/SparkleSprite';
-import { generateGerms } from '../utils/generateGerms';
+import { generateGerms, GERM_TYPE_COUNT } from '../utils/generateGerms';
 import { generateSparkles } from '../utils/generateSparkles';
 import { computeContainRect } from '../utils/displayRect';
 import { playCleanSound } from '../utils/sound';
+import { GERM_ASSET_MODULES, GERM_ASSET_COUNT } from '../utils/germAssets';
 import type { Point3D, WashMode } from '../types';
 
 interface ResultScreenProps {
@@ -27,15 +35,24 @@ interface ResultScreenProps {
   onRetake: () => void;
 }
 
-// 03_Germ_and_Clean_Rendering.md: 최대 확대율 4.0x (손톱 밑 세균 밀착 관찰용)
+// 03_Germ_and_Clean_Rendering.md 원안은 4.0x였지만, 진짜 현미경처럼 손 피부
+// 표면까지 파고들어 보이도록 실사용 피드백에 따라 상한을 10배로 높였다.
 const MIN_SCALE = 1;
-const MAX_SCALE = 4;
+const MAX_SCALE = 10;
 
 // 세균이 "눈에 잘 안 보일 만큼 작고 투명"하게 시작해서, 확대(pinch zoom)할수록
 // 또렷하고 커지도록 하는 리빌(reveal) 효과 — 맨눈으로 안 보이는 세균을 확대해야
 // 발견한다는 컨셉.
 const MIN_GERM_OPACITY_FACTOR = 0.08;
 const MIN_GERM_ZOOM_FACTOR = 0.35;
+const MAX_GERM_ZOOM_FACTOR = 1.0;
+
+// 고배율로 확대하면 사진(피부)은 원본 해상도의 한계로 깨져 보이는데 세균은
+// 별도 고화질 이미지라 계속 또렷해서 이질감이 생긴다. 사진 위·세균 아래에
+// 흰 반투명 레이어를 깔아서 실제 현미경 조명처럼 뿌옇게 보이게 하면, 그
+// 이질감도 자연스럽게 가려진다.
+const MIN_HAZE_OPACITY = 0;
+const MAX_HAZE_OPACITY = 0.55;
 
 export const ResultScreen = ({
   photoUri,
@@ -46,10 +63,55 @@ export const ResultScreen = ({
   onRetake,
 }: ResultScreenProps) => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
 
-  // Pinch(확대) + Pan(이동) 상태. 사진과 Skia 오버레이를 하나의 Animated.View로 감싸
-  // 1:1 동시 확대/축소가 이뤄지도록 한다. (docs/content/03_Germ_and_Clean_Rendering.md)
+  // 사진도 Skia 이미지로 불러온다. 확대(pinch zoom)를 RN View의 CSS 트랜스폼이
+  // 아니라 Skia 내부 Group transform으로 처리하기 위함 — CSS 트랜스폼은 이미
+  // 작게 래스터화된 결과물을 그대로 늘리기만 해서 확대할수록 흐려지지만,
+  // Skia 내부 transform은 매 프레임 원본 해상도에서 다시 그리므로 몇 배를
+  // 확대해도 선명하다 (실기기 테스트에서 CSS 방식의 흐림 문제를 확인함).
+  const photoImage = useImage(photoUri);
+
+  // assets/germs/의 실제 세균 사진 10종을 전부 미리 로드해두고, 사진을 찍을
+  // 때마다(photoUri가 바뀔 때마다) 그중 GERM_TYPE_COUNT(6)개를 무작위로 골라
+  // 쓴다 — 10종을 한 손에 다 쓰면 너무 산만하지만, 매번 같은 6종만 나오면
+  // 단조로우니 매 촬영마다 다른 조합이 나오게 한다.
+  const germImage0 = useImage(GERM_ASSET_MODULES[0]);
+  const germImage1 = useImage(GERM_ASSET_MODULES[1]);
+  const germImage2 = useImage(GERM_ASSET_MODULES[2]);
+  const germImage3 = useImage(GERM_ASSET_MODULES[3]);
+  const germImage4 = useImage(GERM_ASSET_MODULES[4]);
+  const germImage5 = useImage(GERM_ASSET_MODULES[5]);
+  const germImage6 = useImage(GERM_ASSET_MODULES[6]);
+  const germImage7 = useImage(GERM_ASSET_MODULES[7]);
+  const germImage8 = useImage(GERM_ASSET_MODULES[8]);
+  const germImage9 = useImage(GERM_ASSET_MODULES[9]);
+  const allGermImages = [
+    germImage0,
+    germImage1,
+    germImage2,
+    germImage3,
+    germImage4,
+    germImage5,
+    germImage6,
+    germImage7,
+    germImage8,
+    germImage9,
+  ];
+
+  // 이번 사진에서 실제로 사용할 세균 종류(10개 중 6개)를 무작위로 뽑는다.
+  const selectedGermAssetIndices = useMemo(() => {
+    const indices = Array.from({ length: GERM_ASSET_COUNT }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    return indices.slice(0, GERM_TYPE_COUNT);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoUri]);
+
+  // Pinch(확대) + Pan(이동) 상태. 사진과 세균/반짝이를 모두 같은 Skia Group
+  // 안에서 그려서 1:1 동시 확대/축소가 이뤄지도록 한다.
+  // (docs/content/03_Germ_and_Clean_Rendering.md)
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -58,12 +120,6 @@ export const ResultScreen = ({
   const savedTranslateY = useSharedValue(0);
 
   useEffect(() => {
-    setImageSize(null);
-    Image.getSize(
-      photoUri,
-      (width, height) => setImageSize({ width, height }),
-      () => setImageSize(null)
-    );
     // 새 사진을 받으면 이전 확대/이동 상태를 초기화한다.
     scale.value = 1;
     savedScale.value = 1;
@@ -136,35 +192,45 @@ export const ResultScreen = ({
 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-  }));
+  // Skia Group에 적용할 확대/이동 트랜스폼. origin을 컨테이너 중앙으로 둬서
+  // 기존 RN CSS 트랜스폼과 동일하게 중앙 기준으로 확대되도록 한다.
+  const contentTransform = useDerivedValue(() => [
+    { translateX: translateX.value },
+    { translateY: translateY.value },
+    { scale: scale.value },
+  ]);
+  const contentOrigin = { x: containerSize.width / 2, y: containerSize.height / 2 };
 
   // 세균 리빌 효과: 확대 배율(scale)을 세균 레이어의 투명도/크기 배율로 매핑한다.
   const germOpacityFactor = useDerivedValue(() =>
     interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_GERM_OPACITY_FACTOR, 1], Extrapolation.CLAMP)
   );
   const germZoomFactor = useDerivedValue(() =>
-    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_GERM_ZOOM_FACTOR, 1], Extrapolation.CLAMP)
+    interpolate(
+      scale.value,
+      [MIN_SCALE, MAX_SCALE],
+      [MIN_GERM_ZOOM_FACTOR, MAX_GERM_ZOOM_FACTOR],
+      Extrapolation.CLAMP
+    )
+  );
+  // 현미경 뿌연 조명 효과 (사진 위, 세균 아래 레이어의 불투명도)
+  const hazeOpacity = useDerivedValue(() =>
+    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_HAZE_OPACITY, MAX_HAZE_OPACITY], Extrapolation.CLAMP)
   );
 
   // 사진과 화면의 종횡비가 다를 수 있으므로(letterbox), 실제 사진이 표시되는
   // 영역을 기준으로 정규화 좌표를 픽셀로 변환한다.
   const displayRect = useMemo(() => {
-    if (!imageSize || containerSize.width === 0 || containerSize.height === 0) {
+    if (!photoImage || containerSize.width === 0 || containerSize.height === 0) {
       return null;
     }
     return computeContainRect(
-      imageSize.width,
-      imageSize.height,
+      photoImage.width(),
+      photoImage.height(),
       containerSize.width,
       containerSize.height
     );
-  }, [imageSize, containerSize]);
+  }, [photoImage, containerSize]);
 
   const germs = useMemo(
     () => (washMode === 'BEFORE' && displayRect ? generateGerms(handLandmarks, displayRect) : []),
@@ -181,43 +247,65 @@ export const ResultScreen = ({
   return (
     <View style={styles.container} onLayout={handleContainerLayout}>
       <GestureDetector gesture={composedGesture}>
-        <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
-          <Image source={{ uri: photoUri }} resizeMode="contain" style={StyleSheet.absoluteFill} />
-
-          {containerSize.width > 0 && containerSize.height > 0 && (
+        <View style={StyleSheet.absoluteFill}>
+          {containerSize.width > 0 && containerSize.height > 0 && photoImage && displayRect && (
             <Canvas style={StyleSheet.absoluteFill}>
-              {germs.length > 0 && (
-                <Group opacity={isCleanMode ? 0 : 1}>
-                  {/* 확대할수록 또렷하고 커지는 리빌 효과 (히든 버튼의 on/off와는 별개 레이어) */}
-                  <Group opacity={germOpacityFactor}>
-                    {germs.map((germ) => (
-                      <GermSprite
-                        key={germ.id}
-                        x={germ.x}
-                        y={germ.y}
-                        size={germ.size}
-                        opacity={germ.opacity}
-                        rotation={germ.rotation}
-                        scale={germ.scale}
-                        zoomFactor={germZoomFactor}
-                      />
-                    ))}
-                  </Group>
-                </Group>
-              )}
-
-              {sparkles.map((sparkle) => (
-                <SparkleSprite
-                  key={sparkle.id}
-                  x={sparkle.x}
-                  y={sparkle.y}
-                  size={sparkle.size}
-                  opacity={0.9}
+              <Group transform={contentTransform} origin={contentOrigin}>
+                <Image
+                  image={photoImage}
+                  x={displayRect.x}
+                  y={displayRect.y}
+                  width={displayRect.width}
+                  height={displayRect.height}
+                  sampling={{ filter: FilterMode.Linear, mipmap: MipmapMode.Linear }}
                 />
-              ))}
+
+                {/* 현미경 뿌연 조명 효과: 사진(피부) 위, 세균/반짝이 아래에 깔아
+                    고배율 확대 시 사진 해상도 한계와 세균의 또렷함 사이의
+                    이질감을 자연스럽게 가린다. */}
+                <Rect
+                  x={displayRect.x}
+                  y={displayRect.y}
+                  width={displayRect.width}
+                  height={displayRect.height}
+                  color="white"
+                  opacity={hazeOpacity}
+                />
+
+                {germs.length > 0 && (
+                  <Group opacity={isCleanMode ? 0 : 1}>
+                    {/* 확대할수록 또렷하고 커지는 리빌 효과 (히든 버튼의 on/off와는 별개 레이어) */}
+                    <Group opacity={germOpacityFactor}>
+                      {germs.map((germ) => (
+                        <GermSprite
+                          key={germ.id}
+                          x={germ.x}
+                          y={germ.y}
+                          size={germ.size}
+                          opacity={germ.opacity}
+                          rotation={germ.rotation}
+                          scale={germ.scale}
+                          zoomFactor={germZoomFactor}
+                          pngAsset={allGermImages[selectedGermAssetIndices[germ.typeIndex]]}
+                        />
+                      ))}
+                    </Group>
+                  </Group>
+                )}
+
+                {sparkles.map((sparkle) => (
+                  <SparkleSprite
+                    key={sparkle.id}
+                    x={sparkle.x}
+                    y={sparkle.y}
+                    size={sparkle.size}
+                    opacity={0.9}
+                  />
+                ))}
+              </Group>
             </Canvas>
           )}
-        </Animated.View>
+        </View>
       </GestureDetector>
 
       {/* 확대/이동의 영향을 받지 않는 고정 UI */}

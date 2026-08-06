@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, Image } from '@shopify/react-native-skia';
+import { Group, Image, FilterMode, MipmapMode } from '@shopify/react-native-skia';
 import type { SkImage } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
@@ -40,13 +40,33 @@ export const GermSprite = ({
     { scale: scale * zoomFactor.value },
   ]);
 
+  if (pngAsset) {
+    // 실제 세균 이미지는 정사각형이 아니므로, 비율이 깨지지 않도록 size 박스
+    // 안에 중앙 정렬해서 그린다 (긴 변을 size에 맞춤).
+    const aspectRatio = pngAsset.width() / pngAsset.height();
+    const displayWidth = aspectRatio >= 1 ? size : size * aspectRatio;
+    const displayHeight = aspectRatio >= 1 ? size / aspectRatio : size;
+    const imageX = x + (size - displayWidth) / 2;
+    const imageY = y + (size - displayHeight) / 2;
+
+    return (
+      <Group origin={origin} transform={transform}>
+        <Image
+          image={pngAsset}
+          x={imageX}
+          y={imageY}
+          width={displayWidth}
+          height={displayHeight}
+          opacity={opacity}
+          sampling={{ filter: FilterMode.Linear, mipmap: MipmapMode.Linear }}
+        />
+      </Group>
+    );
+  }
+
   return (
     <Group origin={origin} transform={transform}>
-      {pngAsset ? (
-        <Image image={pngAsset} x={x} y={y} width={size} height={size} opacity={opacity} />
-      ) : (
-        <DummyGerm x={x} y={y} size={size} opacity={opacity} />
-      )}
+      <DummyGerm x={x} y={y} size={size} opacity={opacity} />
     </Group>
   );
 };

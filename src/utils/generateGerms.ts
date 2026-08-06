@@ -9,11 +9,19 @@ export interface GermObject {
   opacity: number;
   rotation: number; // degrees
   scale: number;
+  /** assets/germs/의 실제 세균 이미지 중 어떤 종류를 쓸지 (0 ~ GERM_TYPE_COUNT-1) */
+  typeIndex: number;
 }
 
+// 실제로 쓰는 세균 이미지 종류 수. 한 손에 10종류가 다 보이면 너무 산만해서
+// 모양/색이 겹치지 않는 6종만 골라 씀 (ResultScreen의 germImages 배열과 개수를 맞출 것).
+export const GERM_TYPE_COUNT = 6;
+
 const GERM_BASE_SIZE = 24;
-const MIN_GERM_COUNT = 15;
-const MAX_GERM_COUNT = 30;
+// 03_Germ_and_Clean_Rendering.md 원안은 15~30개였지만, 실사용 피드백에 따라
+// 좀 더 북적이게 늘렸다.
+const MIN_GERM_COUNT = 35;
+const MAX_GERM_COUNT = 60;
 // 원래 03_Germ_and_Clean_Rendering.md 스펙은 ±20~40px였지만, 실기기 테스트에서
 // 손가락 끝 등 가장자리 랜드마크 기준으로 이 정도 반경이면 세균이 손 밖으로
 // 튀어나가는 경우가 있어 더 촘촘하게 좁혔다.
@@ -27,7 +35,7 @@ const MAX_SCALE = 1.3;
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
 
 /**
- * 21개 손 좌표를 기준으로 세균 15~30개를 무작위 배치한다.
+ * 21개 손 좌표를 기준으로 세균 35~60개를 무작위 배치한다.
  * (docs/content/03_Germ_and_Clean_Rendering.md - 세균 좌표 분산 알고리즘)
  *
  * MediaPipe 정규화 좌표(0.0~1.0)를 화면 픽셀 좌표로 변환한 뒤
@@ -60,6 +68,7 @@ export const generateGerms = (landmarks: Point3D[], rect: DisplayRect): GermObje
       opacity: randomBetween(MIN_OPACITY, MAX_OPACITY),
       rotation: randomBetween(0, 360),
       scale: randomBetween(MIN_SCALE, MAX_SCALE),
+      typeIndex: Math.floor(Math.random() * GERM_TYPE_COUNT),
     });
   }
 
