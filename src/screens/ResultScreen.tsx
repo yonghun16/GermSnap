@@ -5,6 +5,8 @@ import {
   Group,
   Image,
   Rect,
+  Circle,
+  RadialGradient,
   useImage,
   FilterMode,
   MipmapMode,
@@ -16,6 +18,10 @@ import {
   useSharedValue,
   interpolate,
   Extrapolation,
+  withTiming,
+  withDelay,
+  withRepeat,
+  Easing,
 } from 'react-native-reanimated';
 import { GermSprite } from '../components/GermSprite';
 import { SparkleSprite } from '../components/SparkleSprite';
@@ -53,6 +59,13 @@ const MAX_GERM_ZOOM_FACTOR = 1.0;
 // 이질감도 자연스럽게 가려진다.
 const MIN_HAZE_OPACITY = 0;
 const MAX_HAZE_OPACITY = 0.55;
+
+// AFTER 모드(손 씻은 후) 결과 화면 등장 연출 — 아이들에게 쾌감을 주는 화려한
+// 이펙트: 눈부신 광원을 보는 것처럼 화면 전체가 확 밝아졌다 퍼지며 사라지는
+// 플래시 블룸 + 반짝이 트윙클.
+const FLASH_DURATION_MS = 900;
+const FLASH_DELAY_MS = 150;
+const TWINKLE_PERIOD_MS = 1600;
 
 export const ResultScreen = ({
   photoUri,
@@ -119,6 +132,10 @@ export const ResultScreen = ({
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
+  // 플래시 진행도(0~1, 한 번만 재생)와 반짝이 트윙클 시계(계속 흐름).
+  const flashProgress = useSharedValue(0);
+  const twinkleClock = useSharedValue(0);
+
   useEffect(() => {
     // 새 사진을 받으면 이전 확대/이동 상태를 초기화한다.
     scale.value = 1;
@@ -137,6 +154,24 @@ export const ResultScreen = ({
     // 03_Germ_and_Clean_Rendering.md: 뽀득거리는 상쾌한 효과음 + 칭찬 진동 연출
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     playCleanSound();
+
+    // 화면 전체 플래시: 눈부신 광원을 보는 것처럼 한 번 0→1로 확 밝아졌다
+    // 퍼지며 사라진다.
+    flashProgress.value = 0;
+    flashProgress.value = withDelay(
+      FLASH_DELAY_MS,
+      withTiming(1, { duration: FLASH_DURATION_MS, easing: Easing.out(Easing.cubic) })
+    );
+
+    // 반짝이 트윙클: 계속 0→2π를 반복하는 "시계" (sin 주기와 맞아떨어져서
+    // 반복 지점에서 끊기지 않고 자연스럽게 이어진다).
+    twinkleClock.value = 0;
+    twinkleClock.value = withRepeat(
+      withTiming(Math.PI * 2, { duration: TWINKLE_PERIOD_MS, easing: Easing.linear }),
+      -1,
+      false
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [washMode, photoUri]);
 
   const handleContainerLayout = (event: LayoutChangeEvent) => {
@@ -232,6 +267,22 @@ export const ResultScreen = ({
     );
   }, [photoImage, containerSize]);
 
+  // 화면 전체 플래시: 눈부신 광원을 보는 것처럼 화면 중앙에서 원형으로
+  // 확 밝아졌다가 퍼지며 사라진다. 투명도는 초반에 확 튀어올랐다가
+  // 서서히 0으로 사라지고, 반지름은 계속 커지며 퍼져나간다.
+  // containerSize는 일반 JS state(공유값 아님)라, useDerivedValue가 최신
+  // 값을 계속 반영하도록 반드시 의존성 배열을 넘겨야 한다 — 이전 라이트
+  // 스윕 버그(레이아웃 계산 전 크기 0에 고정되는 문제)를 반복하지 않기 위함.
+  const flashOpacity = useDerivedValue(
+    () => interpolate(flashProgress.value, [0, 0.12, 1], [0, 1, 0], Extrapolation.CLAMP),
+    []
+  );
+  const flashRadius = useDerivedValue(() => {
+    const maxDim = Math.max(containerSize.width, containerSize.height);
+    return interpolate(flashProgress.value, [0, 1], [maxDim * 0.05, maxDim * 0.85], Extrapolation.CLAMP);
+  }, [containerSize]);
+  const flashCenter = { x: containerSize.width / 2, y: containerSize.height / 2 };
+
   const germs = useMemo(
     () => (washMode === 'BEFORE' && displayRect ? generateGerms(handLandmarks, displayRect) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -299,10 +350,36 @@ export const ResultScreen = ({
                     x={sparkle.x}
                     y={sparkle.y}
                     size={sparkle.size}
-                    opacity={0.9}
+                    rotation={sparkle.rotation}
+                    baseOpacity={0.9}
+                    twinkleClock={twinkleClock}
+                    phaseOffset={sparkle.phaseOffset}
                   />
                 ))}
               </Group>
+
+              {/* 화면 전체 플래시: 눈부신 광원을 보는 것처럼 화면 중앙에서
+                  원형으로 확 밝아졌다 퍼지며 사라진다. 화면 확대/이동과는
+                  무관한 좌표계라 Group 바깥(트랜스폼 영향 밖)에 그린다.
+                  Circle과 RadialGradient가 같은 flashRadius 공유값을 써서,
+                  둘의 크기가 어긋나 그라데이션이 도중에 끊기는 것처럼 보이는
+                  버그(이전 라이트 스윕에서 겪음)를 반복하지 않는다. */}
+              {washMode === 'AFTER' && (
+                <Group opacity={flashOpacity}>
+                  <Circle cx={flashCenter.x} cy={flashCenter.y} r={flashRadius}>
+                    <RadialGradient
+                      c={flashCenter}
+                      r={flashRadius}
+                      colors={[
+                        'rgba(255,255,255,1)',
+                        'rgba(255,255,255,0.6)',
+                        'rgba(255,255,255,0)',
+                      ]}
+                      positions={[0, 0.4, 1]}
+                    />
+                  </Circle>
+                </Group>
+              )}
             </Canvas>
           )}
         </View>
