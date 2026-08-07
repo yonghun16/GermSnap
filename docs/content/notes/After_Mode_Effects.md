@@ -41,9 +41,12 @@ PNG 에셋이 없으면 벡터 도형으로 폴백하는 구조]]를 그대로 �
 > 값에 고정되는 문제, (2) `LinearGradient`의 좌표가 고정돼 있어서 움직이는
 > `Rect`가 그 범위를 벗어나면 빛줄기가 끊긴 것처럼 보이는 문제. 두 버그를 고친
 > 뒤에도 "화면 전체를 훑고 지나가서 손바닥만 빛나는 느낌이 안 난다"는 피드백이
-> 이어져, 결국 손 마스크 접근 자체를 버리고 화면 전체 플래시로 교체했다. 관련
-> 유틸(`convexHull.ts`)은 삭제됨. 지금의 `flashOpacity`/`flashRadius`는 (1)의
-> 교훈을 반영해 `containerSize`에 대한 의존성 배열을 명시하고, (2)의 교훈을
+> 이어져, 결국 손 마스크 접근 자체를 버리고 화면 전체 플래시로 교체했다. 당시
+> 관련 유틸(`convexHull.ts`, 볼록 껍질 기반 손 윤곽)은 삭제했었지만, 손 모양 안에서만
+> 무작위 배치가 필요한 다른 용도([[Hand_Silhouette_Sampling|세균 위치 샘플링]])가
+> 생기면서 더 정교한 형태(손가락 캡슐 + 손바닥 다각형, `geometry.ts` +
+> `handSilhouette.ts`)로 다시 만들어졌다. 지금의 `flashOpacity`/`flashRadius`는
+> (1)의 교훈을 반영해 `containerSize`에 대한 의존성 배열을 명시하고, (2)의 교훈을
 > 반영해 `Circle`과 `RadialGradient`가 같은 `flashRadius` 공유값을 쓴다.
 
 ## 5. 칭찬 메시지 + 피드백

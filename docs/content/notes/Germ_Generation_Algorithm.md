@@ -4,7 +4,7 @@
 [[03_Germ_and_Clean_Rendering]]
 
 ## 관련 노드
-[[Germ_Display_Mode]] · [[Germ_Animations]] · [[Dummy_Component_Fallback]]
+[[Germ_Display_Mode]] · [[Germ_Animations]] · [[Dummy_Component_Fallback]] · [[Hand_Silhouette_Sampling]]
 
 ---
 
@@ -20,10 +20,8 @@
 1. **개수**: 55 ~ 90개 무작위 (`MIN_GERM_COUNT` / `MAX_GERM_COUNT`). 최초 기획안은
    15~30개였으나, 더 북적이게 해달라는 피드백에 따라 여러 차례 늘렸다 (15~30 →
    25~45 → 35~60 → 55~90).
-2. **위치**: 21개 손 좌표 중 하나를 무작위로 골라 중심점으로 삼고, 그 주변
-   ±8~18px(`MIN/MAX_OFFSET_RADIUS`) 반경 안에 무작위 각도로 배치한다. 원래 스펙은
-   ±20~40px였지만, 손가락 끝처럼 가장자리인 랜드마크 기준으로는 세균이 손 밖으로
-   튀어나가는 문제가 있어 좁혔다.
+2. **위치**: 손 실루엣(손가락 캡슐 + 손바닥 다각형) 위에 균일 분포로 무작위
+   배치한다 → [[Hand_Silhouette_Sampling]].
 3. **회전/스케일/불투명도**: 무작위 회전각(0~360°), 무작위 스케일(0.8~1.3), 무작위
    불투명도(0.4~0.7).
 4. **종류** (`typeIndex`, 0~5): 아래 참고.

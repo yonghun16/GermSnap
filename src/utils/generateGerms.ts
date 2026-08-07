@@ -1,5 +1,8 @@
 import type { Point3D } from '../types';
 import type { DisplayRect } from './displayRect';
+import { buildHandSilhouette, isPointOnHand } from './handSilhouette';
+import type { HandSilhouette } from './handSilhouette';
+import type { Point2D } from './geometry';
 
 export interface GermObject {
   id: string;
@@ -25,11 +28,7 @@ const GERM_BASE_SIZE = 24;
 // 좀 더 북적이게 늘렸다.
 const MIN_GERM_COUNT = 55;
 const MAX_GERM_COUNT = 90;
-// 원래 03_Germ_and_Clean_Rendering.md 스펙은 ±20~40px였지만, 실기기 테스트에서
-// 손가락 끝 등 가장자리 랜드마크 기준으로 이 정도 반경이면 세균이 손 밖으로
-// 튀어나가는 경우가 있어 더 촘촘하게 좁혔다.
-const MIN_OFFSET_RADIUS = 8;
-const MAX_OFFSET_RADIUS = 18;
+const MAX_SAMPLE_ATTEMPTS = 30;
 const MIN_OPACITY = 0.4;
 const MAX_OPACITY = 0.7;
 const MIN_SCALE = 0.8;
@@ -37,36 +36,54 @@ const MAX_SCALE = 1.3;
 
 const randomBetween = (min: number, max: number) => min + Math.random() * (max - min);
 
+/** 손 실루엣(손가락 캡슐 + 손바닥 다각형) 위에서 균일 분포로 무작위 점을 뽑는다
+ * (rejection sampling). */
+const samplePointOnHand = (silhouette: HandSilhouette): Point2D => {
+  for (let attempt = 0; attempt < MAX_SAMPLE_ATTEMPTS; attempt++) {
+    const candidate = {
+      x: randomBetween(silhouette.bounds.minX, silhouette.bounds.maxX),
+      y: randomBetween(silhouette.bounds.minY, silhouette.bounds.maxY),
+    };
+    if (isPointOnHand(candidate, silhouette)) {
+      return candidate;
+    }
+  }
+  // 계속 실패하면(거의 없는 경우) 무작위 손가락 마디 위 점으로 폴백한다 —
+  // 완전히 사라지는 것보다 낫다.
+  const segment = silhouette.fingerSegments[Math.floor(Math.random() * silhouette.fingerSegments.length)];
+  return { x: (segment.a.x + segment.b.x) / 2, y: (segment.a.y + segment.b.y) / 2 };
+};
+
 /**
- * 21개 손 좌표를 기준으로 세균 35~60개를 무작위 배치한다.
- * (docs/content/03_Germ_and_Clean_Rendering.md - 세균 좌표 분산 알고리즘)
+ * 21개 손 좌표로 손 실루엣(손가락 캡슐 + 손바닥 다각형)을 만들고, 그 위에
+ * 세균 55~90개를 균일하고 무작위로 배치한다. (docs/content/03_Germ_and_Clean_Rendering.md)
  *
- * MediaPipe 정규화 좌표(0.0~1.0)를 화면 픽셀 좌표로 변환한 뒤
- * (rect.x + x * rect.width, rect.y + y * rect.height) 각 세균마다 ±20~40px
- * 랜덤 오프셋을 적용한다. rect는 사진이 실제로 표시되는 영역(letterbox 보정 포함)이다.
+ * 볼록 껍질(convex hull) 기반 배치는 손가락 사이 빈 공간까지 다각형에
+ * 포함시켜버리고, 중심점 기준 확대(expand) 방식이 손가락 끝처럼 중심에서 먼
+ * 지점을 과도하게 밀어내 손가락 폭을 벗어난 위치에 균이 놓이는 문제가 있었다
+ * (실사용 피드백으로 확인됨). 손가락 뼈대를 따라 일정 두께를 갖는 "캡슐"
+ * 모양과 손바닥 다각형의 합집합 위에서만 표본을 뽑아 이 문제를 해결한다.
+ * rect는 사진이 실제로 표시되는 영역(letterbox 보정 포함)이다.
  */
 export const generateGerms = (landmarks: Point3D[], rect: DisplayRect): GermObject[] => {
-  if (landmarks.length === 0) {
+  const silhouette = buildHandSilhouette(landmarks, rect);
+  if (!silhouette) {
     return [];
   }
 
   const count = Math.round(randomBetween(MIN_GERM_COUNT, MAX_GERM_COUNT));
   const germs: GermObject[] = [];
+  // GermSprite/DummyGerm은 (x, y)를 바운딩 박스 좌상단으로 취급하므로,
+  // 세균의 시각적 중심이 뽑힌 지점에 오도록 절반 크기만큼 보정한다.
+  const halfSize = GERM_BASE_SIZE / 2;
 
   for (let i = 0; i < count; i++) {
-    const landmark = landmarks[Math.floor(Math.random() * landmarks.length)];
-    const centerX = rect.x + landmark.x * rect.width;
-    const centerY = rect.y + landmark.y * rect.height;
-    const angle = randomBetween(0, Math.PI * 2);
-    const offsetRadius = randomBetween(MIN_OFFSET_RADIUS, MAX_OFFSET_RADIUS);
-    // GermSprite/DummyGerm은 (x, y)를 바운딩 박스 좌상단으로 취급하므로,
-    // 세균의 시각적 중심이 오프셋 지점에 오도록 절반 크기만큼 보정한다.
-    const halfSize = GERM_BASE_SIZE / 2;
+    const { x, y } = samplePointOnHand(silhouette);
 
     germs.push({
       id: `germ-${i}`,
-      x: centerX + Math.cos(angle) * offsetRadius - halfSize,
-      y: centerY + Math.sin(angle) * offsetRadius - halfSize,
+      x: x - halfSize,
+      y: y - halfSize,
       size: GERM_BASE_SIZE,
       opacity: randomBetween(MIN_OPACITY, MAX_OPACITY),
       rotation: randomBetween(0, 360),
