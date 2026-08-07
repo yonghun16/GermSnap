@@ -4,45 +4,27 @@
 - [[01_Architecture_Flow]]
 - [[03_Germ_and_Clean_Rendering]]
 
----
-
-## 📸 1. 카메라 촬영 로직
-
-- `CameraScreen`에서 사용자가 손을 구도에 맞출 수 있도록 화면 중앙에 손 모양 점선 가이드라인을 표시합니다.
-- [촬영] 버튼 탭 시 현재 프레임을 높은 화질의 정지 이미지 파일(JPG/PNG)로 저장하고 URI를 획득합니다.
+이 문서는 카메라 촬영부터 손 좌표 추출까지의 흐름을 개괄한다. 각 항목의 상세
+구현/함정/이력은 아래 노드를 참고할 것.
 
 ---
 
-## 🤖 2. MediaPipe Hand Landmarker 연동
+## 📸 1. 카메라 촬영 및 화각 보정
+`CameraScreen.tsx`가 손 모양 가이드라인을 오버레이한 미리보기를 보여주고, 촬영 후
+미리보기와 동일한 화각으로 사진을 크롭한다.
+→ [[Camera_Capture_and_Crop]]
 
-- **기능**: 정지 이미지 URI를 입력받아 손의 21개 3D Keypoint 좌표 배열을 반환합니다.
-- **실행 환경**: On-Device (오프라인 TFLite 기반 모듈 사용)
-- **입력**: `photoUri` (Local File Path)
-- **출력**: `Landmark[]` (x, y, z 비례 좌표 값 21개)
+## 🤖 2. On-Device 손 좌표 추출 파이프라인
+공식 `react-native-mediapipe`가 손 랜드마크를 지원하지 않아, palm detector + hand
+landmark 두 TFLite 모델을 직접 구동하는 2단계 파이프라인을 자체 구현했다.
+→ [[Two_Stage_Hand_Pipeline]]
 
-```typescript
-// 손 좌표 분석 헬퍼 예시
-import { HandLandmarker } from 'react-native-mediapipe';
+### ⚠️ 릴리즈 빌드 전용 함정
+디버그 빌드에서는 되는데 릴리즈 빌드에서만 TFLite 모델 로딩이 크래시하는 문제와 그
+해결 방법.
+→ [[Release_Build_Asset_Loading]]
 
-export const analyzeHandImage = async (uri: string) => {
-  const result = await HandLandmarker.detect(uri);
-  if (!result || result.landmarks.length === 0) {
-    return null; // 손 인식 실패
-  }
-  return result.landmarks[0]; // 첫 번째 인식된 손의 21개 좌표 반환
-};
-
-```
-
-## ⚠️ 3. 예외 처리 (Exception Handling)
-
-1. **손이 인식되지 않은 경우 (`landmarks === null`)**:
-    
-    - Alert/Toast 메시지 출력: `"손이 잘 보이지 않아요. 손바닥이 화면 중앙에 오도록 다시 찍어주세요!"`
-        
-    - 스캔 스피너를 중단하고 즉시 `CameraScreen`으로 전환합니다.
-        
-2. **손이 여러 개 인식된 경우**:
-    
-    - 가장 면적이 크고 중앙에 가까운 첫 번째 손(`landmarks[0]`) 좌표 정보만 채택합니다.
-        
+## ⚠️ 3. 예외 처리
+손이 인식되지 않거나 파이프라인 내부 오류가 발생했을 때의 UI/UX (OS 기본 Alert가
+아니라 커스텀 카드형 모달).
+→ [[Hand_Not_Detected_Modal]]

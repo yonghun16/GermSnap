@@ -19,7 +19,7 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>(initialState);
   const [hasStarted, setHasStarted] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [germDisplayMode, setGermDisplayMode] = useState<GermDisplayMode>('MICROSCOPE');
+  const [germDisplayMode, setGermDisplayMode] = useState<GermDisplayMode>('CHARACTER');
 
   useEffect(() => {
     loadGermDisplayMode().then(setGermDisplayMode);

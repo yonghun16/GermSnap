@@ -7,47 +7,72 @@
 
 ---
 
-## 🔄 핵심 모드 상태 (Wash Mode)
+## 🔄 핵심 상태 (State)
 
-앱은 항상 두 가지 교육 모드 중 하나를 유지합니다:
-1. `washMode: 'BEFORE'` (손 씻기 전 모드) ➔ 사진 촬영 시 손에 세균 합성
-2. `washMode: 'AFTER'` (손 씻은 후 모드) ➔ 세균 미생성, 반짝이 이펙트 & 칭찬 팝업
+앱 전역 상태는 `App.tsx`가 들고 있으며, 성격이 다른 두 종류로 나뉜다.
+
+### 1. 촬영 세션 상태 (`AppState`) — 사진 한 장을 찍고 다시 찍을 때마다 초기화됨
+```typescript
+interface AppState {
+  washMode: 'BEFORE' | 'AFTER';  // 현재 촬영 모드
+  photoUri: string | null;        // 촬영된 정지 이미지 경로
+  handLandmarks: Point3D[];       // MediaPipe 파이프라인이 반환한 21개 좌표
+  isCleanMode: boolean;           // 우하단 히든 버튼 클릭 시 토글되는 상태
+}
+```
+
+### 2. 앱 설정 상태 — 화면 전환과 무관하게 유지/영구 저장됨
+- `hasStarted: boolean` — Home 화면인지, Camera/Result 화면으로 넘어갔는지
+- `isSettingsOpen: boolean` — Home 화면 위에 Settings 화면을 보여줄지
+- `germDisplayMode: 'MICROSCOPE' | 'CHARACTER'` — 균 표시 방식. 앱 시작 시
+  `AsyncStorage`에서 불러오고, 설정 화면에서 바꿀 때마다 즉시 저장한다
+  → [[Settings_and_Persistence]], [[Germ_Display_Mode]]
 
 ---
 
 ## 📱 화면 전환 흐름 (Screen Flow)
 
 ```text
+[HomeScreen] (앱 시작 시 항상 여기부터)
+   ├─ 아이콘 / 타이틀 / 소개 문구
+   ├─ [시작하기] 버튼 ─────────────────────► hasStarted = true ──► [CameraScreen]
+   └─ [⚙ 설정] 버튼 (보조 버튼, 시작하기 아래) ──────────────────► [SettingsScreen]
+
+[SettingsScreen]
+   ├─ [‹ 뒤로가기] ────────────────────────────────────────────► [HomeScreen]
+   └─ "균 표시 방식" 카드 2개 (현미경 모드 / 캐릭터 모드)
+        └─ 탭하면 germDisplayMode 즉시 변경 + AsyncStorage에 영구 저장
+
 [CameraScreen]
-   ├─ 상단 탭: [🧼 손 씻기 전] | [✨ 손 씻은 후] 선택
-   ├─ 카메라 가이드라인 오버레이
+   ├─ [‹ 뒤로가기] (좌상단) ───────────────────────────────────► hasStarted = false ──► [HomeScreen]
+   ├─ washMode 토글 (우하단, 반투명 원형 아이콘 버튼 — 분홍 🧼 BEFORE / 하양 ✨ AFTER)
+   │    보건교사가 손이나 몸으로 살짝 가려 탭할 수 있도록 설명 텍스트 없이 아이콘만 둠
+   ├─ 손 모양 점선 가이드라인 오버레이
    └─ [촬영] 버튼 클릭
          │
-         ▼ (Photo URI & washMode 전달)
-[Scan Loading Overlay] (약 0.8초간 진동 + "스캔 중..." 연출)
+         ▼ (사진 crop → Photo URI 확보)
+   [스캔 로딩 오버레이] (약 0.8초 + 실제 추론 시간, "스캔 중..." + 진동)
          │
-         ▼ ([[02_Camera_and_AI]] 손 좌표 분석)
-┌─────────────────────────┴─────────────────────────┐
-│ (손 인식 성공)                                    │ (손 미인식: landmarks === 0)
-▼                                                   ▼
-[ResultScreen]                                   [에러 팝업]
-   ├─ Skia Canvas 오버레이                        "손이 보이지 않아요!"
-   │   ├─ BEFORE 모드: 세균 합성                     └─► [CameraScreen] 복귀
-   │   └─ AFTER 모드: 반짝이 + 칭찬 메시지
-   ├─ Pinch Zoom 기능 (최대 4배)
-   ├─ [다시 찍기 🔄] 버튼 (좌상단)
-   └─ [히든 버튼 🤫] (우하단, opacity 0.03) ➔ Clean Mode 강제 토글
+         ▼ (2단계 온디바이스 파이프라인으로 손 좌표 분석, [[Two_Stage_Hand_Pipeline]])
+   ┌─────────────┴─────────────┐
+   │ (손 인식 성공)             │ (손 미인식 또는 내부 오류)
+   ▼                           ▼
+[ResultScreen]              [손 미인식 모달] (카드형 커스텀 모달, 기본 Alert 아님)
+                                └─► [다시 찍기] 버튼 ──► CameraScreen에 머무름
+
+[ResultScreen]
+   ├─ Skia Canvas: 사진 + (BEFORE) 세균 오버레이 또는 (AFTER) 반짝이 + 화면 전체 플래시
+   ├─ Pinch Zoom + Pan (germDisplayMode에 따라 최대 배율이 다름: 현미경 10x / 캐릭터 4x)
+   ├─ [↺ 다시 찍기] 버튼 (좌상단) ─────────────────────────────► photoUri = null ──► [CameraScreen]
+   └─ [히든 버튼 🤫] (우하단, opacity 0.03) ➔ isCleanMode 강제 토글
 ```
 
-## 📊 중앙 데이터 상태 (State Management)
+## 📌 화면 컴포넌트 매핑
 
-TypeScript
-
-```
-interface AppState {
-  washMode: 'BEFORE' | 'AFTER';  // 현재 촬영 모드
-  photoUri: string | null;         // 촬영된 정지 이미지 경로
-  handLandmarks: Point3D[];        // MediaPipe가 반환한 21개 좌표
-  isCleanMode: boolean;            // 히든 버튼 클릭 시 토글되는 상태
-}
-```
+| 화면 | 파일 |
+| :--- | :--- |
+| Home | `src/screens/HomeScreen.tsx` |
+| Settings | `src/screens/SettingsScreen.tsx` |
+| Camera | `src/screens/CameraScreen.tsx` |
+| Result | `src/screens/ResultScreen.tsx` |
+| 최상위 상태/라우팅 | `App.tsx` (별도 네비게이션 라이브러리 없이 조건부 렌더링으로 화면을 전환) |
