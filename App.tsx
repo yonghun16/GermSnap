@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import type { AppState } from './src/types';
@@ -14,6 +15,7 @@ const initialState: AppState = {
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>(initialState);
+  const [hasStarted, setHasStarted] = useState(false);
 
   const handleScanComplete: React.ComponentProps<typeof CameraScreen>['onScanComplete'] = (
     photoUri,
@@ -32,7 +34,9 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {appState.photoUri ? (
+      {!hasStarted ? (
+        <HomeScreen onStart={() => setHasStarted(true)} />
+      ) : appState.photoUri ? (
         <ResultScreen
           photoUri={appState.photoUri}
           washMode={appState.washMode}

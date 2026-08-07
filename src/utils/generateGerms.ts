@@ -11,6 +11,9 @@ export interface GermObject {
   scale: number;
   /** assets/germs/의 실제 세균 이미지 중 어떤 종류를 쓸지 (0 ~ GERM_TYPE_COUNT-1) */
   typeIndex: number;
+  /** 숨쉬기(breathing) 애니메이션의 위상 오프셋(라디안) — 세균마다 달라서
+   * 다 같이 숨쉬지 않고 제각각 살아있는 것처럼 보이게 한다. */
+  phaseOffset: number;
 }
 
 // 실제로 쓰는 세균 이미지 종류 수. 한 손에 10종류가 다 보이면 너무 산만해서
@@ -20,8 +23,8 @@ export const GERM_TYPE_COUNT = 6;
 const GERM_BASE_SIZE = 24;
 // 03_Germ_and_Clean_Rendering.md 원안은 15~30개였지만, 실사용 피드백에 따라
 // 좀 더 북적이게 늘렸다.
-const MIN_GERM_COUNT = 35;
-const MAX_GERM_COUNT = 60;
+const MIN_GERM_COUNT = 55;
+const MAX_GERM_COUNT = 90;
 // 원래 03_Germ_and_Clean_Rendering.md 스펙은 ±20~40px였지만, 실기기 테스트에서
 // 손가락 끝 등 가장자리 랜드마크 기준으로 이 정도 반경이면 세균이 손 밖으로
 // 튀어나가는 경우가 있어 더 촘촘하게 좁혔다.
@@ -69,6 +72,7 @@ export const generateGerms = (landmarks: Point3D[], rect: DisplayRect): GermObje
       rotation: randomBetween(0, 360),
       scale: randomBetween(MIN_SCALE, MAX_SCALE),
       typeIndex: Math.floor(Math.random() * GERM_TYPE_COUNT),
+      phaseOffset: randomBetween(0, Math.PI * 2),
     });
   }
 

@@ -55,8 +55,10 @@ const MAX_GERM_ZOOM_FACTOR = 1.0;
 
 // 고배율로 확대하면 사진(피부)은 원본 해상도의 한계로 깨져 보이는데 세균은
 // 별도 고화질 이미지라 계속 또렷해서 이질감이 생긴다. 사진 위·세균 아래에
-// 흰 반투명 레이어를 깔아서 실제 현미경 조명처럼 뿌옇게 보이게 하면, 그
-// 이질감도 자연스럽게 가려진다.
+// 반투명 레이어를 깔아서 실제 현미경 조명처럼 뿌옇게 보이게 하면, 그
+// 이질감도 자연스럽게 가려진다. 실제 현미경 투과광(백라이트)은 순백색이
+// 아니라 주광색(약 6500K, 살짝 푸른 기가 도는 흰색)에 가까워서 그 색을 쓴다.
+const HAZE_COLOR = '#EAF4FF';
 const MIN_HAZE_OPACITY = 0;
 const MAX_HAZE_OPACITY = 0.55;
 
@@ -66,6 +68,10 @@ const MAX_HAZE_OPACITY = 0.55;
 const FLASH_DURATION_MS = 900;
 const FLASH_DELAY_MS = 150;
 const TWINKLE_PERIOD_MS = 1600;
+
+// 세균이 살아서 숨을 쉬는 듯한 느낌을 주는 애니메이션 주기. BEFORE 모드에서
+// 계속 반복 재생된다 (트윙클보다 느리게, 숨쉬기처럼 은은하게).
+const BREATHE_PERIOD_MS = 2400;
 
 export const ResultScreen = ({
   photoUri,
@@ -135,6 +141,8 @@ export const ResultScreen = ({
   // 플래시 진행도(0~1, 한 번만 재생)와 반짝이 트윙클 시계(계속 흐름).
   const flashProgress = useSharedValue(0);
   const twinkleClock = useSharedValue(0);
+  // 세균 숨쉬기 시계(계속 흐름) — BEFORE 모드에서 세균이 표시되는 동안 계속 돈다.
+  const breatheClock = useSharedValue(0);
 
   useEffect(() => {
     // 새 사진을 받으면 이전 확대/이동 상태를 초기화한다.
@@ -144,6 +152,14 @@ export const ResultScreen = ({
     translateY.value = 0;
     savedTranslateX.value = 0;
     savedTranslateY.value = 0;
+
+    // 세균 숨쉬기 애니메이션: 계속 0→2π를 반복하는 "시계".
+    breatheClock.value = 0;
+    breatheClock.value = withRepeat(
+      withTiming(Math.PI * 2, { duration: BREATHE_PERIOD_MS, easing: Easing.linear }),
+      -1,
+      false
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUri]);
 
@@ -319,7 +335,7 @@ export const ResultScreen = ({
                   y={displayRect.y}
                   width={displayRect.width}
                   height={displayRect.height}
-                  color="white"
+                  color={HAZE_COLOR}
                   opacity={hazeOpacity}
                 />
 
@@ -337,6 +353,8 @@ export const ResultScreen = ({
                           rotation={germ.rotation}
                           scale={germ.scale}
                           zoomFactor={germZoomFactor}
+                          breatheClock={breatheClock}
+                          phaseOffset={germ.phaseOffset}
                           pngAsset={allGermImages[selectedGermAssetIndices[germ.typeIndex]]}
                         />
                       ))}
