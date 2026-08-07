@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
-import type { AppState } from './src/types';
+import { loadGermDisplayMode, saveGermDisplayMode } from './src/utils/germDisplayModeStorage';
+import type { AppState, GermDisplayMode } from './src/types';
 
 const initialState: AppState = {
   washMode: 'BEFORE',
@@ -16,6 +18,17 @@ const initialState: AppState = {
 export default function App() {
   const [appState, setAppState] = useState<AppState>(initialState);
   const [hasStarted, setHasStarted] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [germDisplayMode, setGermDisplayMode] = useState<GermDisplayMode>('MICROSCOPE');
+
+  useEffect(() => {
+    loadGermDisplayMode().then(setGermDisplayMode);
+  }, []);
+
+  const handleChangeGermDisplayMode = (mode: GermDisplayMode) => {
+    setGermDisplayMode(mode);
+    saveGermDisplayMode(mode);
+  };
 
   const handleScanComplete: React.ComponentProps<typeof CameraScreen>['onScanComplete'] = (
     photoUri,
@@ -35,13 +48,22 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {!hasStarted ? (
-        <HomeScreen onStart={() => setHasStarted(true)} />
+        isSettingsOpen ? (
+          <SettingsScreen
+            germDisplayMode={germDisplayMode}
+            onChangeGermDisplayMode={handleChangeGermDisplayMode}
+            onBack={() => setIsSettingsOpen(false)}
+          />
+        ) : (
+          <HomeScreen onStart={() => setHasStarted(true)} onOpenSettings={() => setIsSettingsOpen(true)} />
+        )
       ) : appState.photoUri ? (
         <ResultScreen
           photoUri={appState.photoUri}
           washMode={appState.washMode}
           handLandmarks={appState.handLandmarks}
           isCleanMode={appState.isCleanMode}
+          germDisplayMode={germDisplayMode}
           onToggleCleanMode={handleToggleCleanMode}
           onRetake={handleRetake}
         />
@@ -50,6 +72,7 @@ export default function App() {
           washMode={appState.washMode}
           onWashModeChange={(washMode) => setAppState((prev) => ({ ...prev, washMode }))}
           onScanComplete={handleScanComplete}
+          onBack={() => setHasStarted(false)}
         />
       )}
       <StatusBar style="light" />

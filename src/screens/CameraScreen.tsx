@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
-  Alert,
   LayoutChangeEvent,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { analyzeHandImage } from '../utils/analyzeHandImage';
 import { cropPhotoToAspectRatio } from '../utils/cropToAspectRatio';
@@ -28,18 +29,21 @@ interface CameraScreenProps {
   washMode: WashMode;
   onWashModeChange: (mode: WashMode) => void;
   onScanComplete: (photoUri: string, landmarks: Point3D[]) => void;
+  onBack: () => void;
 }
 
 export const CameraScreen = ({
   washMode,
   onWashModeChange,
   onScanComplete,
+  onBack,
 }: CameraScreenProps) => {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  const [isHandNotDetectedVisible, setIsHandNotDetectedVisible] = useState(false);
 
   const handlePreviewLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -89,10 +93,7 @@ export const CameraScreen = ({
       console.error('analyzeHandImage failed:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       playErrorSound();
-      Alert.alert(
-        '손이 보이지 않아요!',
-        '손이 잘 보이지 않아요. 손바닥이 화면 중앙에 오도록 다시 찍어주세요!'
-      );
+      setIsHandNotDetectedVisible(true);
     } finally {
       setIsScanning(false);
     }
@@ -124,25 +125,27 @@ export const CameraScreen = ({
         onCameraReady={() => setIsCameraReady(true)}
       />
 
-      {/* 상단 washMode 탭 */}
-      <View style={styles.tabBar}>
-        <Pressable
-          style={[styles.tabButton, washMode === 'BEFORE' && styles.tabButtonActive]}
-          onPress={() => onWashModeChange('BEFORE')}
-        >
-          <Text style={[styles.tabText, washMode === 'BEFORE' && styles.tabTextActive]}>
-            🧼 손 씻기 전
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tabButton, washMode === 'AFTER' && styles.tabButtonActive]}
-          onPress={() => onWashModeChange('AFTER')}
-        >
-          <Text style={[styles.tabText, washMode === 'AFTER' && styles.tabTextActive]}>
-            ✨ 손 씻은 후
-          </Text>
-        </Pressable>
-      </View>
+      {/* 뒤로가기 버튼: 앱을 종료하는 대신 메인(시작) 화면으로 돌아간다 — 요즘
+          앱은 별도 종료 버튼을 두지 않는 것이 일반적이라, 앱 종료 대신 이전
+          화면으로의 이동으로 대체. */}
+      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
+        <Ionicons name="chevron-back" size={18} color="#fff" />
+        <Text style={styles.backButtonText}>뒤로가기</Text>
+      </Pressable>
+
+      {/* washMode 토글: 화면 우하단의 작고 반투명한 원형 버튼 하나로 BEFORE/AFTER를
+          전환한다. 보건교사가 손이나 몸으로 살짝 가려서 아이들에게는 안 보이게
+          누를 수 있도록, 설명 텍스트 없이 아이콘만 있는 눈에 덜 띄는 형태로 둔다. */}
+      <Pressable
+        style={[
+          styles.washModeToggle,
+          washMode === 'BEFORE' ? styles.washModeToggleBefore : styles.washModeToggleAfter,
+        ]}
+        onPress={() => onWashModeChange(washMode === 'BEFORE' ? 'AFTER' : 'BEFORE')}
+        hitSlop={8}
+      >
+        <Text style={styles.washModeToggleIcon}>{washMode === 'BEFORE' ? '🧼' : '✨'}</Text>
+      </Pressable>
 
       {/* 손 모양 가이드라인: GUIDE_RECT와 동일한 비율로 그려서 실제 크롭 영역과 일치시킨다 */}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -185,6 +188,32 @@ export const CameraScreen = ({
           <Text style={styles.scanOverlayText}>스캔 중...</Text>
         </View>
       )}
+
+      {/* 손 미인식 모달: 기본 Alert 대신 앱 톤에 맞는 둥글고 부드러운 카드로 표시 */}
+      <Modal
+        visible={isHandNotDetectedVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsHandNotDetectedVisible(false)}
+      >
+        <View style={styles.handModalBackdrop}>
+          <View style={styles.handModalCard}>
+            <View style={styles.handModalIconCircle}>
+              <Ionicons name="hand-left-outline" size={32} color="#FF7043" />
+            </View>
+            <Text style={styles.handModalTitle}>손이 보이지 않아요!</Text>
+            <Text style={styles.handModalMessage}>
+              손바닥이 화면 중앙에 크게 오도록{'\n'}다시 찍어주세요!
+            </Text>
+            <Pressable
+              style={styles.handModalButton}
+              onPress={() => setIsHandNotDetectedVisible(false)}
+            >
+              <Text style={styles.handModalButtonText}>다시 찍기</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -215,31 +244,49 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  tabBar: {
+  washModeToggle: {
     position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
+    bottom: 56,
+    right: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
   },
-  tabButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+  washModeToggleBefore: {
+    backgroundColor: 'rgba(244,143,177,0.4)', // 분홍 (손 씻기 전)
   },
-  tabButtonActive: {
-    backgroundColor: '#4FC3F7',
+  washModeToggleAfter: {
+    backgroundColor: 'rgba(255,255,255,0.4)', // 하양 (손 씻은 후)
   },
-  tabText: {
-    color: '#eee',
+  washModeToggleIcon: {
+    fontSize: 24,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 56,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(20,20,20,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  backButtonText: {
+    color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-  },
-  tabTextActive: {
-    color: '#fff',
+    letterSpacing: 0.2,
   },
   guideShape: {
     position: 'absolute',
@@ -301,5 +348,62 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  handModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+  },
+  handModalCard: {
+    width: '100%',
+    maxWidth: 300,
+    backgroundColor: '#fff',
+    borderRadius: 28,
+    paddingTop: 28,
+    paddingBottom: 20,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  handModalIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFF3E0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  handModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#263238',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  handModalMessage: {
+    fontSize: 14,
+    color: '#607D8B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 22,
+  },
+  handModalButton: {
+    width: '100%',
+    backgroundColor: '#4FC3F7',
+    paddingVertical: 13,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  handModalButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

@@ -12,6 +12,7 @@ import {
   MipmapMode,
 } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,
@@ -30,21 +31,26 @@ import { generateSparkles } from '../utils/generateSparkles';
 import { computeContainRect } from '../utils/displayRect';
 import { playCleanSound } from '../utils/sound';
 import { GERM_ASSET_MODULES, GERM_ASSET_COUNT } from '../utils/germAssets';
-import type { Point3D, WashMode } from '../types';
+import type { GermDisplayMode, Point3D, WashMode } from '../types';
 
 interface ResultScreenProps {
   photoUri: string;
   washMode: WashMode;
   handLandmarks: Point3D[];
   isCleanMode: boolean;
+  germDisplayMode: GermDisplayMode;
   onToggleCleanMode: () => void;
   onRetake: () => void;
 }
 
-// 03_Germ_and_Clean_Rendering.md 원안은 4.0x였지만, 진짜 현미경처럼 손 피부
-// 표면까지 파고들어 보이도록 실사용 피드백에 따라 상한을 10배로 높였다.
 const MIN_SCALE = 1;
-const MAX_SCALE = 10;
+// 현미경 모드: 진짜 현미경처럼 손 피부 표면까지 파고들어 보이도록 실사용
+// 피드백에 따라 상한을 10배로 높였다 (03_Germ_and_Clean_Rendering.md 원안은 4.0x).
+// 캐릭터 모드: 사실적인 세균 사진 대신 귀여운 캐릭터 도형을 쓰는 만큼, 원안
+// 그대로 4배로 제한한다 — 저학년 등 사실적인 세균 사진을 무서워하는 아이들을
+// 위해 두 모드로 나눠 달라는 피드백에 따라 도입.
+const MICROSCOPE_MAX_SCALE = 10;
+const CHARACTER_MAX_SCALE = 4;
 
 // 세균이 "눈에 잘 안 보일 만큼 작고 투명"하게 시작해서, 확대(pinch zoom)할수록
 // 또렷하고 커지도록 하는 리빌(reveal) 효과 — 맨눈으로 안 보이는 세균을 확대해야
@@ -78,10 +84,12 @@ export const ResultScreen = ({
   washMode,
   handLandmarks,
   isCleanMode,
+  germDisplayMode,
   onToggleCleanMode,
   onRetake,
 }: ResultScreenProps) => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const maxScale = germDisplayMode === 'CHARACTER' ? CHARACTER_MAX_SCALE : MICROSCOPE_MAX_SCALE;
 
   // 사진도 Skia 이미지로 불러온다. 확대(pinch zoom)를 RN View의 CSS 트랜스폼이
   // 아니라 Skia 내부 Group transform으로 처리하기 위함 — CSS 트랜스폼은 이미
@@ -210,7 +218,7 @@ export const ResultScreen = ({
 
   const pinchGesture = Gesture.Pinch()
     .onUpdate((event) => {
-      scale.value = clamp(savedScale.value * event.scale, MIN_SCALE, MAX_SCALE);
+      scale.value = clamp(savedScale.value * event.scale, MIN_SCALE, maxScale);
     })
     .onEnd(() => {
       savedScale.value = scale.value;
@@ -253,20 +261,29 @@ export const ResultScreen = ({
   const contentOrigin = { x: containerSize.width / 2, y: containerSize.height / 2 };
 
   // 세균 리빌 효과: 확대 배율(scale)을 세균 레이어의 투명도/크기 배율로 매핑한다.
-  const germOpacityFactor = useDerivedValue(() =>
-    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_GERM_OPACITY_FACTOR, 1], Extrapolation.CLAMP)
+  // maxScale은 germDisplayMode(일반 prop)에서 파생된 일반 JS 값이라, 이 값이
+  // 바뀔 수 있는 한 useDerivedValue에 명시적 의존성 배열을 넘겨야 한다 —
+  // 안 그러면 훅이 처음 만들어질 때의 값에 그대로 고정되는 버그가 생긴다
+  // (이전 라이트 스윕 버그와 같은 종류).
+  const germOpacityFactor = useDerivedValue(
+    () => interpolate(scale.value, [MIN_SCALE, maxScale], [MIN_GERM_OPACITY_FACTOR, 1], Extrapolation.CLAMP),
+    [maxScale]
   );
-  const germZoomFactor = useDerivedValue(() =>
-    interpolate(
-      scale.value,
-      [MIN_SCALE, MAX_SCALE],
-      [MIN_GERM_ZOOM_FACTOR, MAX_GERM_ZOOM_FACTOR],
-      Extrapolation.CLAMP
-    )
+  const germZoomFactor = useDerivedValue(
+    () =>
+      interpolate(
+        scale.value,
+        [MIN_SCALE, maxScale],
+        [MIN_GERM_ZOOM_FACTOR, MAX_GERM_ZOOM_FACTOR],
+        Extrapolation.CLAMP
+      ),
+    [maxScale]
   );
-  // 현미경 뿌연 조명 효과 (사진 위, 세균 아래 레이어의 불투명도)
-  const hazeOpacity = useDerivedValue(() =>
-    interpolate(scale.value, [MIN_SCALE, MAX_SCALE], [MIN_HAZE_OPACITY, MAX_HAZE_OPACITY], Extrapolation.CLAMP)
+  // 현미경 뿌연 조명 효과 (사진 위, 세균 아래 레이어의 불투명도) — 캐릭터
+  // 모드에서는 사용하지 않는다.
+  const hazeOpacity = useDerivedValue(
+    () => interpolate(scale.value, [MIN_SCALE, maxScale], [MIN_HAZE_OPACITY, MAX_HAZE_OPACITY], Extrapolation.CLAMP),
+    [maxScale]
   );
 
   // 사진과 화면의 종횡비가 다를 수 있으므로(letterbox), 실제 사진이 표시되는
@@ -329,15 +346,19 @@ export const ResultScreen = ({
 
                 {/* 현미경 뿌연 조명 효과: 사진(피부) 위, 세균/반짝이 아래에 깔아
                     고배율 확대 시 사진 해상도 한계와 세균의 또렷함 사이의
-                    이질감을 자연스럽게 가린다. */}
-                <Rect
-                  x={displayRect.x}
-                  y={displayRect.y}
-                  width={displayRect.width}
-                  height={displayRect.height}
-                  color={HAZE_COLOR}
-                  opacity={hazeOpacity}
-                />
+                    이질감을 자연스럽게 가린다. 캐릭터 모드는 사실적인 사진이
+                    아니라 벡터 도형을 쓰고 확대 배율도 낮아 이 이질감 자체가
+                    없으므로 현미경 모드에서만 그린다. */}
+                {germDisplayMode === 'MICROSCOPE' && (
+                  <Rect
+                    x={displayRect.x}
+                    y={displayRect.y}
+                    width={displayRect.width}
+                    height={displayRect.height}
+                    color={HAZE_COLOR}
+                    opacity={hazeOpacity}
+                  />
+                )}
 
                 {germs.length > 0 && (
                   <Group opacity={isCleanMode ? 0 : 1}>
@@ -355,7 +376,11 @@ export const ResultScreen = ({
                           zoomFactor={germZoomFactor}
                           breatheClock={breatheClock}
                           phaseOffset={germ.phaseOffset}
-                          pngAsset={allGermImages[selectedGermAssetIndices[germ.typeIndex]]}
+                          pngAsset={
+                            germDisplayMode === 'CHARACTER'
+                              ? null
+                              : allGermImages[selectedGermAssetIndices[germ.typeIndex]]
+                          }
                         />
                       ))}
                     </Group>
@@ -413,7 +438,8 @@ export const ResultScreen = ({
       )}
 
       <Pressable style={styles.retakeButton} onPress={onRetake}>
-        <Text style={styles.retakeButtonText}>🔄 다시 찍기</Text>
+        <Ionicons name="refresh" size={16} color="#fff" />
+        <Text style={styles.retakeButtonText}>다시 찍기</Text>
       </Pressable>
 
       {/* 우하단 히든 버튼: 보건교사용 Clean Mode 강제 토글 (거의 안 보이는 opacity) */}
@@ -453,17 +479,28 @@ const styles = StyleSheet.create({
   },
   retakeButton: {
     position: 'absolute',
-    top: 60,
+    top: 56,
     left: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(20,20,20,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   retakeButtonText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   hiddenButton: {
     position: 'absolute',
