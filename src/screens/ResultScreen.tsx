@@ -376,6 +376,7 @@ export const ResultScreen = ({
                           zoomFactor={germZoomFactor}
                           breatheClock={breatheClock}
                           phaseOffset={germ.phaseOffset}
+                          typeIndex={germ.typeIndex}
                           pngAsset={
                             germDisplayMode === 'CHARACTER'
                               ? null

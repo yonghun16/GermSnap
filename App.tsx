@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { HelpScreen } from './src/screens/HelpScreen';
 import { CameraScreen } from './src/screens/CameraScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import { loadGermDisplayMode, saveGermDisplayMode } from './src/utils/germDisplayModeStorage';
@@ -18,7 +19,8 @@ const initialState: AppState = {
 export default function App() {
   const [appState, setAppState] = useState<AppState>(initialState);
   const [hasStarted, setHasStarted] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  // Home 화면 위에 보여줄 하위 화면 — 셋 중 하나는 항상 배타적으로만 열린다.
+  const [homeView, setHomeView] = useState<'main' | 'settings' | 'help'>('main');
   const [germDisplayMode, setGermDisplayMode] = useState<GermDisplayMode>('CHARACTER');
 
   useEffect(() => {
@@ -48,14 +50,20 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       {!hasStarted ? (
-        isSettingsOpen ? (
+        homeView === 'settings' ? (
           <SettingsScreen
             germDisplayMode={germDisplayMode}
             onChangeGermDisplayMode={handleChangeGermDisplayMode}
-            onBack={() => setIsSettingsOpen(false)}
+            onBack={() => setHomeView('main')}
           />
+        ) : homeView === 'help' ? (
+          <HelpScreen onBack={() => setHomeView('main')} />
         ) : (
-          <HomeScreen onStart={() => setHasStarted(true)} onOpenSettings={() => setIsSettingsOpen(true)} />
+          <HomeScreen
+            onStart={() => setHasStarted(true)}
+            onOpenSettings={() => setHomeView('settings')}
+            onOpenHelp={() => setHomeView('help')}
+          />
         )
       ) : appState.photoUri ? (
         <ResultScreen

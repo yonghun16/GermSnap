@@ -24,6 +24,8 @@ interface GermSpriteProps {
   breatheClock: SharedValue<number>;
   /** 세균마다 다른 위상(라디안) — 제각각 숨쉬는 것처럼 보이게 한다. */
   phaseOffset: number;
+  /** pngAsset이 없을 때(캐릭터 모드) DummyGerm이 어떤 캐릭터 표정을 쓸지 고르는 값. */
+  typeIndex: number;
   pngAsset?: SkImage | null;
 }
 
@@ -42,6 +44,7 @@ export const GermSprite = ({
   zoomFactor,
   breatheClock,
   phaseOffset,
+  typeIndex,
   pngAsset,
 }: GermSpriteProps) => {
   const origin = { x: x + size / 2, y: y + size / 2 };
@@ -87,7 +90,7 @@ export const GermSprite = ({
 
   return (
     <Group origin={origin} transform={transform} opacity={breatheOpacity}>
-      <DummyGerm x={x} y={y} size={size} opacity={opacity} />
+      <DummyGerm x={x} y={y} size={size} opacity={opacity} typeIndex={typeIndex} />
     </Group>
   );
 };

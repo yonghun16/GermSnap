@@ -14,7 +14,7 @@
 
 | | 현미경 모드 (`MICROSCOPE`) | 캐릭터 모드 (`CHARACTER`, 기본값) |
 | :--- | :--- | :--- |
-| 세균 그래픽 | `assets/germs/`의 실제 세균 사진(PNG) | `DummyGerm`(초록 원 + 어두운 점 2개, Skia 벡터 도형) — [[Dummy_Component_Fallback]] |
+| 세균 그래픽 | `assets/germs/`의 실제 세균 사진(PNG) | `DummyGerm`(표정 있는 캐릭터 6종, Skia 벡터 도형) — [[Dummy_Component_Fallback]] |
 | 최대 확대 배율 | **10배** | **4배** — [[Pinch_Zoom_Gesture]] |
 | [[Microscope_Haze_Layer\|현미경 뿌연 조명 레이어]] | 있음 | 없음 (사실적 사진이 아니므로 해상도 이질감 자체가 없음) |
 
