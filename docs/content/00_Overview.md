@@ -42,12 +42,17 @@
 | **아이콘** | `@expo/vector-icons` (Ionicons, MaterialCommunityIcons) | 뒤로가기/다시 찍기/설정 등 UI 아이콘 |
 | **저장소** | `@react-native-async-storage/async-storage` | 균 표시 방식(현미경/캐릭터) 설정을 기기에 영구 저장 |
 | **다국어** | `i18next`, `react-i18next`, `expo-localization` | 기기 언어(한국어/영어/일본어/중국어)에 맞춰 앱 UI 문구 자동 번역 → [[Localization]] |
+| **인앱 영상** | `react-native-youtube-iframe` (+ `react-native-webview`) | Home 화면에서 언어권별 손 씻기 영상을 유튜브 앱 대신 인앱 전체화면 임베드로 재생 → [[Handwash_Video]] |
 | **Feedback** | `expo-haptics` | 스캔/성공/실패 진동. 효과음(`sound.ts`)은 자리만 마련된 상태이며 현재는 no-op (아래 "알려진 갭" 참고) |
 
 ---
 
 ## 💡 개발 핵심 원칙
-1. **100% 오프라인 동작**: 서버 통신 코드 금지 (학교 현장의 Wi-Fi 불안정 고려)
+1. **100% 오프라인 동작**: 서버 통신 코드 금지 (학교 현장의 Wi-Fi 불안정 고려).
+   유일한 예외는 Home 화면의 "올바른 손 씻기 영상" 버튼 — 언어권별 YouTube
+   영상을 인앱 전체화면으로 자동 재생하는 기능으로, 영상 재생 자체가 인터넷을
+   전제로 하는 선택적 부가 기능이라 예외로 둔다 (핵심 스캔 기능은 여전히 완전
+   오프라인) → [[Handwash_Video]].
 2. **단일 정지 이미지 분석**: 실시간 동영상 분석 대신, 촬영된 정지 이미지 한 장을 분석하는 방식 유지
 3. **명세서 우선**: `docs/content/`의 명세를 먼저 확인하고 코드를 수정/작성한다. 명세와 실제 코드가 다르다면, 실기기 검증을 거친 코드 쪽이 최신 진실이며 이 문서를 갱신해야 한다는 뜻이다.
 

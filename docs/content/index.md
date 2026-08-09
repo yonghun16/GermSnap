@@ -23,4 +23,4 @@ Phase 1~5 초기 구현 이후에도 실기기 테스트를 거쳐 계속 개정
 
 - **카메라/AI**: [[Two_Stage_Hand_Pipeline]] · [[Release_Build_Asset_Loading]] · [[Camera_Capture_and_Crop]] · [[Hand_Not_Detected_Modal]]
 - **세균/이펙트 렌더링**: [[Rendering_Architecture]] · [[Germ_Display_Mode]] · [[Germ_Generation_Algorithm]] · [[Hand_Silhouette_Sampling]] · [[Germ_Animations]] · [[Microscope_Haze_Layer]] · [[After_Mode_Effects]] · [[Pinch_Zoom_Gesture]]
-- **에셋/설정**: [[Dummy_Component_Fallback]] · [[Asset_Folder_Structure]] · [[Settings_and_Persistence]] · [[Localization]]
+- **에셋/설정**: [[Dummy_Component_Fallback]] · [[Asset_Folder_Structure]] · [[Settings_and_Persistence]] · [[Localization]] · [[Handwash_Video]]
