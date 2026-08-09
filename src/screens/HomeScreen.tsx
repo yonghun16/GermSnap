@@ -85,11 +85,11 @@ export const HomeScreen = ({ onStart, onOpenSettings, onOpenHelp }: HomeScreenPr
           </Pressable>
           <View style={styles.secondaryButtonRow}>
             <Pressable style={styles.secondaryButton} onPress={onOpenSettings}>
-              <Ionicons name="settings-outline" size={16} color="#334155" />
+              <Text style={styles.secondaryButtonEmoji}>⚙️</Text>
               <Text style={styles.secondaryButtonText}>{t('home.settings')}</Text>
             </Pressable>
             <Pressable style={styles.secondaryButton} onPress={onOpenHelp}>
-              <Ionicons name="help-circle-outline" size={16} color="#334155" />
+              <Text style={styles.secondaryButtonEmoji}>❓</Text>
               <Text style={styles.secondaryButtonText}>{t('home.help')}</Text>
             </Pressable>
           </View>
@@ -250,6 +250,9 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     borderRadius: 16,
     backgroundColor: '#F1F5F9',
+  },
+  secondaryButtonEmoji: {
+    fontSize: 15,
   },
   secondaryButtonText: {
     color: '#334155',
