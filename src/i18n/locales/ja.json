@@ -1,0 +1,60 @@
+{
+  "common": {
+    "back": "戻る",
+    "retake": "撮り直す"
+  },
+  "home": {
+    "eyebrow": "小学校保健教育",
+    "title": "手の細菌スキャナー",
+    "subtitle": "カメラで手を映すと\n目に見えない細菌を見つけられます!",
+    "disclaimer": "本物の細菌ではなく、学習用に合成した画像です",
+    "start": "はじめる",
+    "settings": "設定",
+    "help": "ヘルプ"
+  },
+  "settings": {
+    "title": "設定",
+    "sectionLabel": "細菌の表示方法",
+    "microscopeTitle": "顕微鏡モード",
+    "microscopeDescription": "実際の細菌写真でリアルに表示します。最大10倍まで拡大できます。",
+    "characterTitle": "キャラクターモード",
+    "characterDescription": "かわいいキャラクターの細菌で表示します。最大4倍まで拡大できます。"
+  },
+  "help": {
+    "title": "ヘルプ",
+    "subtitle": "手の細菌スキャナーの使い方",
+    "items": {
+      "capture": {
+        "title": "手の写真を撮る",
+        "description": "「はじめる」をタップし、手のひらを画面いっぱいに合わせて下の丸い撮影ボタンを押します。"
+      },
+      "washMode": {
+        "title": "洗う前 / 後を切り替える",
+        "description": "カメラ画面右下の小さな丸いボタンを押すと、洗う前(ピンク🧼)と洗った後(白✨)を切り替えられます。"
+      },
+      "zoom": {
+        "title": "拡大してよく見る",
+        "description": "結果画面で2本指で画面を広げる(ピンチズーム)と、見えにくかった細菌が大きくはっきり見えます。"
+      },
+      "retake": {
+        "title": "撮り直す",
+        "description": "結果画面左上の「撮り直す」ボタンを押すと、最初から撮影し直せます。"
+      },
+      "germMode": {
+        "title": "細菌の表示方法を変える",
+        "description": "メイン画面の「設定」で、リアルな顕微鏡モードとかわいいキャラクターモードから選べます。"
+      }
+    }
+  },
+  "camera": {
+    "permissionMessage": "手の細菌をスキャンするにはカメラの権限が必要です。",
+    "permissionButton": "カメラへのアクセスを許可",
+    "guideText": "手のひらをガイドラインに大きく合わせてください",
+    "scanning": "スキャン中...",
+    "handNotDetectedTitle": "手が見つかりません!",
+    "handNotDetectedMessage": "手のひらが画面中央に大きく\n写るように撮り直してください!"
+  },
+  "result": {
+    "praise": "✨ よくできました! 細菌がきれいに消えました!"
+  }
+}

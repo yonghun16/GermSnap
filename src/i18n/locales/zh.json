@@ -1,0 +1,60 @@
+{
+  "common": {
+    "back": "返回",
+    "retake": "重新拍摄"
+  },
+  "home": {
+    "eyebrow": "小学保健教育",
+    "title": "手部细菌扫描仪",
+    "subtitle": "用摄像头照一照手\n就能发现看不见的细菌!",
+    "disclaimer": "并非真实细菌，是用于教学的合成图像",
+    "start": "开始使用",
+    "settings": "设置",
+    "help": "帮助"
+  },
+  "settings": {
+    "title": "设置",
+    "sectionLabel": "细菌显示方式",
+    "microscopeTitle": "显微镜模式",
+    "microscopeDescription": "以真实细菌照片逼真呈现，最多可放大10倍。",
+    "characterTitle": "卡通模式",
+    "characterDescription": "以可爱的卡通细菌呈现，最多可放大4倍。"
+  },
+  "help": {
+    "title": "帮助",
+    "subtitle": "手部细菌扫描仪使用方法",
+    "items": {
+      "capture": {
+        "title": "拍摄手部照片",
+        "description": "点击“开始使用”，将手掌对准取景框后点击下方的圆形拍摄按钮。"
+      },
+      "washMode": {
+        "title": "切换洗手前 / 后",
+        "description": "点击相机画面右下角的小圆形按钮，即可在洗手前(粉色🧼)和洗手后(白色✨)之间切换。"
+      },
+      "zoom": {
+        "title": "放大查看细节",
+        "description": "在结果画面用两根手指张开(双指缩放)，原本看不清的细菌就会变大变清晰。"
+      },
+      "retake": {
+        "title": "重新拍摄",
+        "description": "点击结果画面左上角的“重新拍摄”按钮，即可从头重新拍照。"
+      },
+      "germMode": {
+        "title": "更改细菌显示方式",
+        "description": "在主界面的“设置”中，可以在逼真的显微镜模式和可爱的卡通模式之间选择。"
+      }
+    }
+  },
+  "camera": {
+    "permissionMessage": "需要相机权限才能扫描手部细菌。",
+    "permissionButton": "允许访问相机",
+    "guideText": "请将手掌对准并填满引导框",
+    "scanning": "扫描中...",
+    "handNotDetectedTitle": "未检测到手!",
+    "handNotDetectedMessage": "请将手掌置于画面中央\n并填满画面后重新拍摄!"
+  },
+  "result": {
+    "praise": "✨ 做得好! 细菌已经干干净净啦!"
+  }
+}

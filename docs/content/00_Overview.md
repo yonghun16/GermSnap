@@ -40,6 +40,7 @@
 | **이미지 후처리** | `expo-image-manipulator` | 촬영된 사진을 미리보기와 동일한 비율로 네이티브 크롭 |
 | **아이콘** | `@expo/vector-icons` (Ionicons, MaterialCommunityIcons) | 뒤로가기/다시 찍기/설정 등 UI 아이콘 |
 | **저장소** | `@react-native-async-storage/async-storage` | 균 표시 방식(현미경/캐릭터) 설정을 기기에 영구 저장 |
+| **다국어** | `i18next`, `react-i18next`, `expo-localization` | 기기 언어(한국어/영어/일본어/중국어)에 맞춰 앱 UI 문구 자동 번역 → [[Localization]] |
 | **Feedback** | `expo-haptics` | 스캔/성공/실패 진동. 효과음(`sound.ts`)은 자리만 마련된 상태이며 현재는 no-op (아래 "알려진 갭" 참고) |
 
 ---

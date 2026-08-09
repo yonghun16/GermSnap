@@ -1,0 +1,60 @@
+{
+  "common": {
+    "back": "뒤로가기",
+    "retake": "다시 찍기"
+  },
+  "home": {
+    "eyebrow": "초등학교 보건교육",
+    "title": "손 세균 스캐너",
+    "subtitle": "카메라로 손을 비추면\n눈에 보이지 않는 세균을 찾아볼 수 있어요!",
+    "disclaimer": "실제 세균이 아닌, 교육용으로 합성한 이미지예요",
+    "start": "시작하기",
+    "settings": "설정",
+    "help": "도움말"
+  },
+  "settings": {
+    "title": "설정",
+    "sectionLabel": "균 표시 방식",
+    "microscopeTitle": "현미경 모드",
+    "microscopeDescription": "실제 세균 사진으로 사실적으로 보여줘요. 최대 10배까지 확대할 수 있어요.",
+    "characterTitle": "캐릭터 모드",
+    "characterDescription": "귀여운 캐릭터 세균으로 보여줘요. 최대 4배까지 확대할 수 있어요."
+  },
+  "help": {
+    "title": "도움말",
+    "subtitle": "손 세균 스캐너는 이렇게 써요",
+    "items": {
+      "capture": {
+        "title": "손 사진 찍기",
+        "description": "\"시작하기\"를 누르고, 손바닥이 화면 안에 크게 오도록 맞춘 뒤 아래쪽 동그란 촬영 버튼을 눌러요."
+      },
+      "washMode": {
+        "title": "손 씻기 전 / 후 바꾸기",
+        "description": "카메라 화면 오른쪽 아래 작은 동그란 버튼을 누르면 손 씻기 전(분홍 🧼)과 손 씻은 후(하양 ✨)를 바꿀 수 있어요."
+      },
+      "zoom": {
+        "title": "확대해서 자세히 보기",
+        "description": "결과 화면에서 손가락 두 개로 화면을 벌리면(핀치 줌), 눈에 잘 안 보이던 세균이 크고 또렷하게 보여요."
+      },
+      "retake": {
+        "title": "다시 찍기",
+        "description": "결과 화면 왼쪽 위 \"다시 찍기\" 버튼을 누르면 처음부터 다시 촬영할 수 있어요."
+      },
+      "germMode": {
+        "title": "균 표시 방식 바꾸기",
+        "description": "메인 화면의 \"설정\"에서 진짜 사진처럼 보여주는 현미경 모드와, 귀여운 캐릭터로 보여주는 캐릭터 모드 중 골라 쓸 수 있어요."
+      }
+    }
+  },
+  "camera": {
+    "permissionMessage": "손 세균을 스캔하려면 카메라 권한이 필요해요.",
+    "permissionButton": "카메라 권한 허용하기",
+    "guideText": "손바닥을 가이드라인 안에 크게 맞춰주세요",
+    "scanning": "스캔 중...",
+    "handNotDetectedTitle": "손이 보이지 않아요!",
+    "handNotDetectedMessage": "손바닥이 화면 중앙에 크게 오도록\n다시 찍어주세요!"
+  },
+  "result": {
+    "praise": "✨ 참 잘했어요! 세균이 깨끗하게 사라졌어요!"
+  }
+}

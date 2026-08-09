@@ -13,6 +13,7 @@ import {
 } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,
@@ -88,6 +89,7 @@ export const ResultScreen = ({
   onToggleCleanMode,
   onRetake,
 }: ResultScreenProps) => {
+  const { t } = useTranslation();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const maxScale = germDisplayMode === 'CHARACTER' ? CHARACTER_MAX_SCALE : MICROSCOPE_MAX_SCALE;
 
@@ -432,15 +434,13 @@ export const ResultScreen = ({
       {/* 확대/이동의 영향을 받지 않는 고정 UI */}
       {washMode === 'AFTER' && (
         <View style={styles.praiseBanner} pointerEvents="none">
-          <Text style={styles.praiseText}>
-            ✨ 참 잘했어요! 세균이 깨끗하게 사라졌어요!
-          </Text>
+          <Text style={styles.praiseText}>{t('result.praise')}</Text>
         </View>
       )}
 
       <Pressable style={styles.retakeButton} onPress={onRetake}>
         <Ionicons name="refresh" size={16} color="#fff" />
-        <Text style={styles.retakeButtonText}>다시 찍기</Text>
+        <Text style={styles.retakeButtonText}>{t('common.retake')}</Text>
       </Pressable>
 
       {/* 우하단 히든 버튼: 보건교사용 Clean Mode 강제 토글 (거의 안 보이는 opacity) */}

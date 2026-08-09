@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { analyzeHandImage } from '../utils/analyzeHandImage';
 import { cropPhotoToAspectRatio } from '../utils/cropToAspectRatio';
@@ -38,6 +39,7 @@ export const CameraScreen = ({
   onScanComplete,
   onBack,
 }: CameraScreenProps) => {
+  const { t } = useTranslation();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -106,11 +108,9 @@ export const CameraScreen = ({
   if (!permission.granted) {
     return (
       <View style={[styles.container, styles.permissionContainer]}>
-        <Text style={styles.permissionText}>
-          손 세균을 스캔하려면 카메라 권한이 필요해요.
-        </Text>
+        <Text style={styles.permissionText}>{t('camera.permissionMessage')}</Text>
         <Pressable style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>카메라 권한 허용하기</Text>
+          <Text style={styles.permissionButtonText}>{t('camera.permissionButton')}</Text>
         </Pressable>
       </View>
     );
@@ -130,7 +130,7 @@ export const CameraScreen = ({
           화면으로의 이동으로 대체. */}
       <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
         <Ionicons name="chevron-back" size={18} color="#fff" />
-        <Text style={styles.backButtonText}>뒤로가기</Text>
+        <Text style={styles.backButtonText}>{t('common.back')}</Text>
       </Pressable>
 
       {/* washMode 토글: 화면 우하단의 작고 반투명한 원형 버튼 하나로 BEFORE/AFTER를
@@ -166,7 +166,7 @@ export const CameraScreen = ({
             { top: `${(GUIDE_RECT.y + GUIDE_RECT.height) * 100}%` },
           ]}
         >
-          <Text style={styles.guideText}>손바닥을 가이드라인 안에 크게 맞춰주세요</Text>
+          <Text style={styles.guideText}>{t('camera.guideText')}</Text>
         </View>
       </View>
 
@@ -185,7 +185,7 @@ export const CameraScreen = ({
       {isScanning && (
         <View style={styles.scanOverlay}>
           <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={styles.scanOverlayText}>스캔 중...</Text>
+          <Text style={styles.scanOverlayText}>{t('camera.scanning')}</Text>
         </View>
       )}
 
@@ -201,15 +201,13 @@ export const CameraScreen = ({
             <View style={styles.handModalIconCircle}>
               <Ionicons name="hand-left-outline" size={32} color="#FF7043" />
             </View>
-            <Text style={styles.handModalTitle}>손이 보이지 않아요!</Text>
-            <Text style={styles.handModalMessage}>
-              손바닥이 화면 중앙에 크게 오도록{'\n'}다시 찍어주세요!
-            </Text>
+            <Text style={styles.handModalTitle}>{t('camera.handNotDetectedTitle')}</Text>
+            <Text style={styles.handModalMessage}>{t('camera.handNotDetectedMessage')}</Text>
             <Pressable
               style={styles.handModalButton}
               onPress={() => setIsHandNotDetectedVisible(false)}
             >
-              <Text style={styles.handModalButtonText}>다시 찍기</Text>
+              <Text style={styles.handModalButtonText}>{t('common.retake')}</Text>
             </Pressable>
           </View>
         </View>

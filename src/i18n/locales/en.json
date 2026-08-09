@@ -1,0 +1,60 @@
+{
+  "common": {
+    "back": "Back",
+    "retake": "Retake"
+  },
+  "home": {
+    "eyebrow": "Elementary Health Education",
+    "title": "Hand Germ Scanner",
+    "subtitle": "Point the camera at your hand\nto find germs you can't see!",
+    "disclaimer": "Not real germs — these are simulated images for learning",
+    "start": "Get Started",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "settings": {
+    "title": "Settings",
+    "sectionLabel": "Germ Display Style",
+    "microscopeTitle": "Microscope Mode",
+    "microscopeDescription": "Shows realistic germ photos. Zoom in up to 10x.",
+    "characterTitle": "Character Mode",
+    "characterDescription": "Shows cute cartoon germs. Zoom in up to 4x."
+  },
+  "help": {
+    "title": "Help",
+    "subtitle": "Here's how Hand Germ Scanner works",
+    "items": {
+      "capture": {
+        "title": "Take a photo of your hand",
+        "description": "Tap \"Get Started\", fit your palm inside the frame, then tap the round shutter button."
+      },
+      "washMode": {
+        "title": "Switch Before / After washing",
+        "description": "Tap the small round button at the bottom right of the camera screen to switch between Before washing (pink 🧼) and After washing (white ✨)."
+      },
+      "zoom": {
+        "title": "Zoom in for a closer look",
+        "description": "On the result screen, pinch with two fingers to zoom in — germs that were too small to see become big and clear."
+      },
+      "retake": {
+        "title": "Retake the photo",
+        "description": "Tap \"Retake\" at the top left of the result screen to take a new photo from the start."
+      },
+      "germMode": {
+        "title": "Change the germ display style",
+        "description": "In \"Settings\" on the main screen, choose between realistic Microscope Mode and cute Character Mode."
+      }
+    }
+  },
+  "camera": {
+    "permissionMessage": "Camera access is needed to scan for hand germs.",
+    "permissionButton": "Allow Camera Access",
+    "guideText": "Fit your palm inside the guide",
+    "scanning": "Scanning...",
+    "handNotDetectedTitle": "We couldn't see a hand!",
+    "handNotDetectedMessage": "Please retake the photo with your\npalm centered and filling the frame!"
+  },
+  "result": {
+    "praise": "✨ Great job! Your germs are all gone!"
+  }
+}

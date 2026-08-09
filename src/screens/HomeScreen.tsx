@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 
 interface HomeScreenProps {
   onStart: () => void;
@@ -23,6 +24,7 @@ interface HomeScreenProps {
  * 필요가 없어 보이지 않는다).
  */
 export const HomeScreen = ({ onStart, onOpenSettings, onOpenHelp }: HomeScreenProps) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       {/* 화면 상단에 꽉 차게 깔아둔 배경 그림. 그대로 두면 글자가 잘 안 보여서
@@ -35,15 +37,13 @@ export const HomeScreen = ({ onStart, onOpenSettings, onOpenHelp }: HomeScreenPr
         <View style={styles.heroSection}>
           <View style={styles.eyebrowRow}>
             <View style={styles.eyebrowDot} />
-            <Text style={styles.eyebrowText}>초등학교 보건교육</Text>
+            <Text style={styles.eyebrowText}>{t('home.eyebrow')}</Text>
           </View>
 
           <Image source={require('../../assets/icon.png')} style={styles.icon} resizeMode="cover" />
 
-          <Text style={styles.title}>손 세균 스캐너</Text>
-          <Text style={styles.subtitle}>
-            카메라로 손을 비추면{'\n'}눈에 보이지 않는 세균을 찾아볼 수 있어요!
-          </Text>
+          <Text style={styles.title}>{t('home.title')}</Text>
+          <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
         </View>
 
         <View style={styles.actions}>
@@ -51,7 +51,7 @@ export const HomeScreen = ({ onStart, onOpenSettings, onOpenHelp }: HomeScreenPr
               들어가지 않아도 시작 전에 누구나 보게끔 인트로에 바로 안내한다. */}
           <View style={styles.disclaimerRow}>
             <Ionicons name="information-circle-outline" size={14} color="#94A3B8" />
-            <Text style={styles.disclaimerText}>실제 세균이 아닌, 교육용으로 합성한 이미지예요</Text>
+            <Text style={styles.disclaimerText}>{t('home.disclaimer')}</Text>
           </View>
 
           <Pressable onPress={onStart}>
@@ -61,18 +61,18 @@ export const HomeScreen = ({ onStart, onOpenSettings, onOpenHelp }: HomeScreenPr
               end={{ x: 1, y: 1 }}
               style={styles.startButton}
             >
-              <Text style={styles.startButtonText}>시작하기</Text>
+              <Text style={styles.startButtonText}>{t('home.start')}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </Pressable>
           <View style={styles.secondaryButtonRow}>
             <Pressable style={styles.secondaryButton} onPress={onOpenSettings}>
               <Ionicons name="settings-outline" size={16} color="#334155" />
-              <Text style={styles.secondaryButtonText}>설정</Text>
+              <Text style={styles.secondaryButtonText}>{t('home.settings')}</Text>
             </Pressable>
             <Pressable style={styles.secondaryButton} onPress={onOpenHelp}>
               <Ionicons name="help-circle-outline" size={16} color="#334155" />
-              <Text style={styles.secondaryButtonText}>도움말</Text>
+              <Text style={styles.secondaryButtonText}>{t('home.help')}</Text>
             </Pressable>
           </View>
         </View>

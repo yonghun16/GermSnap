@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { GermDisplayMode } from '../types';
 
 interface SettingsScreenProps {
@@ -11,8 +12,8 @@ interface SettingsScreenProps {
 
 interface ModeOption {
   mode: GermDisplayMode;
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   iconBg: string;
   iconColor: string;
   renderIcon: (color: string) => React.ReactNode;
@@ -24,16 +25,16 @@ interface ModeOption {
 const MODE_OPTIONS: ModeOption[] = [
   {
     mode: 'MICROSCOPE',
-    title: '현미경 모드',
-    description: '실제 세균 사진으로 사실적으로 보여줘요. 최대 10배까지 확대할 수 있어요.',
+    titleKey: 'settings.microscopeTitle',
+    descriptionKey: 'settings.microscopeDescription',
     iconBg: '#E1F5FE',
     iconColor: '#0288D1',
     renderIcon: (color) => <MaterialCommunityIcons name="microscope" size={28} color={color} />,
   },
   {
     mode: 'CHARACTER',
-    title: '캐릭터 모드',
-    description: '귀여운 캐릭터 세균으로 보여줘요. 최대 4배까지 확대할 수 있어요.',
+    titleKey: 'settings.characterTitle',
+    descriptionKey: 'settings.characterDescription',
     iconBg: '#E8F5E9',
     iconColor: '#43A047',
     renderIcon: (color) => <Ionicons name="happy-outline" size={28} color={color} />,
@@ -45,16 +46,17 @@ export const SettingsScreen = ({
   onChangeGermDisplayMode,
   onBack,
 }: SettingsScreenProps) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
         <Ionicons name="chevron-back" size={20} color="#263238" />
-        <Text style={styles.backButtonText}>뒤로가기</Text>
+        <Text style={styles.backButtonText}>{t('common.back')}</Text>
       </Pressable>
 
       <View style={styles.body}>
-        <Text style={styles.title}>설정</Text>
-        <Text style={styles.sectionLabel}>균 표시 방식</Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
+        <Text style={styles.sectionLabel}>{t('settings.sectionLabel')}</Text>
 
         <View style={styles.optionList}>
           {MODE_OPTIONS.map((option) => {
@@ -69,8 +71,8 @@ export const SettingsScreen = ({
                   {option.renderIcon(option.iconColor)}
                 </View>
                 <View style={styles.optionTextWrap}>
-                  <Text style={styles.optionTitle}>{option.title}</Text>
-                  <Text style={styles.optionDescription}>{option.description}</Text>
+                  <Text style={styles.optionTitle}>{t(option.titleKey)}</Text>
+                  <Text style={styles.optionDescription}>{t(option.descriptionKey)}</Text>
                 </View>
                 {isSelected && (
                   <Ionicons name="checkmark-circle" size={24} color="#4FC3F7" />
