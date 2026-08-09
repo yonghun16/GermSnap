@@ -5,7 +5,7 @@
   },
   "home": {
     "eyebrow": "Elementary Health Education",
-    "title": "Hand Germ Scanner",
+    "title": "Germ Snap",
     "subtitle": "Point the camera at your hand\nto find germs you can't see!",
     "disclaimer": "Not real germs — these are simulated images for learning",
     "start": "Get Started",
@@ -22,7 +22,7 @@
   },
   "help": {
     "title": "Help",
-    "subtitle": "Here's how Hand Germ Scanner works",
+    "subtitle": "Here's how Germ Snap works",
     "items": {
       "capture": {
         "title": "Take a photo of your hand",

@@ -1,0 +1,8 @@
+{
+  "android": {
+    "app_name": "세균 카메라"
+  },
+  "ios": {
+    "CFBundleDisplayName": "세균 카메라"
+  }
+}

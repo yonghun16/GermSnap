@@ -1,5 +1,5 @@
 {
-  "name": "hand-germ-scanner",
+  "name": "germsnap",
   "version": "1.0.0",
   "private": true,
   "main": "index.ts",

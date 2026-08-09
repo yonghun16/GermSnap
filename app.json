@@ -1,7 +1,10 @@
 {
   "expo": {
-    "name": "손 세균 스캐너",
-    "slug": "hand-germ-scanner",
+    "name": "Germ Snap",
+    "slug": "germsnap",
+    "locales": {
+      "ko": "./locales/ko.json"
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

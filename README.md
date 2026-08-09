@@ -1,9 +1,9 @@
-# 🧼 보건교육용 손 세균 스캐너 (Hand Germ Scanner)
+# 🧼 보건교육용 Germ Snap (세균 카메라)
 
 > **On-Device AI 기반 초등학교 보건교육용 손 세균 시각화 모바일 앱**  
 > 아이들이 손 씻기의 중요성을 눈으로 직접 확인하고 즐겁게 습관화할 수 있도록 돕는 오프라인 교육 도구입니다.
 
-[![Quartz Docs](https://img.shields.io/badge/Docs-Quartz_v5-84a59d?style=flat-square)](https://yonghun16.github.io/handGermScanner)
+[![Quartz Docs](https://img.shields.io/badge/Docs-Quartz_v5-84a59d?style=flat-square)](https://yonghun16.github.io/GermSnap)
 [![React Native](https://img.shields.io/badge/React_Native-Expo-61dafb?style=flat-square&logo=react)](https://expo.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 
@@ -16,7 +16,7 @@
 
 - **타겟 사용자**: 초등학생 및 보건교사
 - **핵심 목표**: 손 씻기 전 세균 시각화 및 손 씻은 후 칭찬 이펙트를 통한 보건교육 효과 극대화
-- **웹 명세서**: 🔗 [온라인 개발 명세서 바로가기](https://yonghun16.github.io/handGermScanner)
+- **웹 명세서**: 🔗 [온라인 개발 명세서 바로가기](https://yonghun16.github.io/GermSnap)
 
 ---
 
@@ -48,7 +48,7 @@
 ## 📁 프로젝트 구조 (Directory Structure)
 
 ```text
-handGermScanner/
+GermSnap/
  ├── CLAUDE.md                   # AI 에이전트 개발 지침서
  ├── README.md                   # 프로젝트 메인 안내 문서
  ├── content/                    # 옵시디언 기획/명세 문서 (Quartz 배포용)

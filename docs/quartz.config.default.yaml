@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=./quartz/plugins/quartz-plugins.schema.json
 configuration:
-  pageTitle: 보건교육용 손 세균 스캐너 Docs
+  pageTitle: 보건교육용 Germ Snap(세균 카메라) Docs
   pageTitleSuffix: ""
   enableSPA: true
   enablePopovers: true

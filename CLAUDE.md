@@ -1,4 +1,4 @@
-# Hand Germ Scanner - AI Agent Guideline
+# Germ Snap - AI Agent Guideline
 
 ## 📌 Project Overview & Architecture Specs
 이 프로젝트는 초등학교 보건교육용 On-Device AI 손 세균 시각화 앱입니다.

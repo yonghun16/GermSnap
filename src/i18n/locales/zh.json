@@ -5,7 +5,7 @@
   },
   "home": {
     "eyebrow": "小学保健教育",
-    "title": "手部细菌扫描仪",
+    "title": "细菌相机",
     "subtitle": "用摄像头照一照手\n就能发现看不见的细菌!",
     "disclaimer": "并非真实细菌，是用于教学的合成图像",
     "start": "开始使用",
@@ -22,7 +22,7 @@
   },
   "help": {
     "title": "帮助",
-    "subtitle": "手部细菌扫描仪使用方法",
+    "subtitle": "细菌相机使用方法",
     "items": {
       "capture": {
         "title": "拍摄手部照片",
