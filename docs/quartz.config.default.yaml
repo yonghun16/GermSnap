@@ -7,7 +7,7 @@ configuration:
   analytics:
     provider: plausible
   locale: ko-KR
-  baseUrl: yonghun16.github.io/handGermScanner
+  baseUrl: yonghun16.github.io/GermSnap
   ignorePatterns:
     - private
     - templates

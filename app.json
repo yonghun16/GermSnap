@@ -14,7 +14,7 @@
       "infoPlist": {
         "NSCameraUsageDescription": "손 세균을 스캔하려면 카메라 접근 권한이 필요해요."
       },
-      "bundleIdentifier": "com.anonymous.handgermscanner"
+      "bundleIdentifier": "com.yonghun16.germsnap"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,7 +25,8 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": ["android.permission.CAMERA"],
-      "package": "com.anonymous.handgermscanner"
+      "package": "com.yonghun16.germsnap",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -36,7 +37,8 @@
         {
           "cameraPermission": "손 세균을 스캔하려면 카메라 접근 권한이 필요해요."
         }
-      ]
+      ],
+      "./plugins/withReleaseSigningConfig.js"
     ]
   }
 }
