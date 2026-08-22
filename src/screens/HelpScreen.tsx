@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 interface HelpScreenProps {
@@ -28,9 +29,14 @@ const HELP_ITEMS: HelpItem[] = [
  */
 export const HelpScreen = ({ onBack }: HelpScreenProps) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.container}>
-      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
+      <Pressable
+        style={[styles.backButton, { marginTop: insets.top + 24, marginLeft: insets.left + 16 }]}
+        onPress={onBack}
+        hitSlop={8}
+      >
         <Ionicons name="chevron-back" size={20} color="#263238" />
         <Text style={styles.backButtonText}>{t('common.back')}</Text>
       </Pressable>
@@ -66,8 +72,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginTop: 56,
-    marginLeft: 16,
     paddingVertical: 8,
     paddingRight: 8,
   },

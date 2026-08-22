@@ -5,26 +5,51 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   ActivityIndicator,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, type CameraRatio } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import { analyzeHandImage } from '../utils/analyzeHandImage';
-import { cropPhotoToAspectRatio } from '../utils/cropToAspectRatio';
+import { computeContainRect } from '../utils/displayRect';
 import { playScanSound, playErrorSound } from '../utils/sound';
 import type { WashMode, Point3D } from '../types';
 
-// 01_Architecture_Flow.md: Scan Loading Overlay 약 0.8초간 진동 + "스캔 중..." 연출
+// Scan Loading Overlay 진동 + "스캔 중..." 연출 지속 시간
 const SCAN_OVERLAY_DURATION_MS = 800;
 
-// 가이드라인 영역 (미리보기 화면 기준 정규화 좌표, 0~1) — 순수 시각적 안내용.
-// 2단계 파이프라인(palm detector가 손 위치/크기/회전을 자동으로 찾음)이 되면서
-// 더 이상 이 영역으로 크롭하지는 않지만, 사용자가 손을 화면 안에 적당히 크게
-// 담도록 유도하는 역할은 여전히 유효하다.
+// 가이드라인 영역 (카메라 화면 기준 정규화 좌표, 0~1) — 순수 시각적 안내용
 const GUIDE_RECT = { x: 0.08, y: 0.16, width: 0.84, height: 0.58 };
+
+// 가장자리 버튼에 safe-area inset 위로 추가하는 여백 (TV 미러링 오버스캔 대응)
+const EDGE_SAFE_MARGIN = 24;
+
+// ratio를 지정하면 미리보기가 FIT(레터박스 있음, 화각 넓음)이 된다. 폴더블
+// 접힘/펼침 비율에 맞춰 16:9 / 4:3을 고르고, 앱 창이 가로로 더 넓은 경우
+// (DeX 등)는 세로 콘텐츠와 비율 차이가 너무 커서 ratio를 생략해 기본
+// FILL(레터박스 없이 꽉 채움)로 되돌린다.
+const TALL_ASPECT_THRESHOLD = 1.8;
+
+const getCameraRatioForAspect = (width: number, height: number): CameraRatio | undefined => {
+  if (width <= 0 || height <= 0) {
+    return '16:9';
+  }
+  if (width > height) {
+    return undefined;
+  }
+  const aspect = height / width;
+  return aspect >= TALL_ASPECT_THRESHOLD ? '16:9' : '4:3';
+};
+
+// CameraRatio 문자열("16:9" 등, 가로 기준)을 세로 미리보기 width:height로 변환
+const getPortraitAspectSize = (ratio: CameraRatio): { width: number; height: number } => {
+  const [a, b] = ratio.split(':').map(Number);
+  return { width: b, height: a };
+};
 
 interface CameraScreenProps {
   washMode: WashMode;
@@ -40,17 +65,34 @@ export const CameraScreen = ({
   onBack,
 }: CameraScreenProps) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const cameraRatio = getCameraRatioForAspect(windowWidth, windowHeight);
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
   const [isHandNotDetectedVisible, setIsHandNotDetectedVisible] = useState(false);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  const handlePreviewLayout = (event: LayoutChangeEvent) => {
+  const handleContainerLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    setPreviewSize({ width, height });
+    setContainerSize({ width, height });
   };
+
+  // FIT 모드(ratio 지정)일 때는 컨테이너 안 일부 사각형에만 카메라가 보이므로,
+  // 가이드라인을 그 영역 기준으로 그린다. FILL 모드(ratio 없음)는 컨테이너 전체.
+  const visibleCameraRect =
+    containerSize.width > 0 && containerSize.height > 0
+      ? cameraRatio == null
+        ? { x: 0, y: 0, width: containerSize.width, height: containerSize.height }
+        : computeContainRect(
+            getPortraitAspectSize(cameraRatio).width,
+            getPortraitAspectSize(cameraRatio).height,
+            containerSize.width,
+            containerSize.height
+          )
+      : null;
 
   const handleCapture = async () => {
     if (!cameraRef.current || !isCameraReady || isScanning) {
@@ -67,31 +109,17 @@ export const CameraScreen = ({
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       playScanSound();
 
-      // expo-camera 미리보기는 화면을 꽉 채우려고 사진을 잘라서 보여주므로(cover),
-      // 실제 촬영된 사진은 센서 원본 비율 그대로라 미리보기보다 화각이 넓다.
-      // 미리보기와 동일한 비율로 중앙 크롭해 "본 대로 찍힌다"를 보장한다.
-      const photoUri =
-        previewSize.width > 0 && previewSize.height > 0
-          ? await cropPhotoToAspectRatio(
-              photo.uri,
-              photo.width,
-              photo.height,
-              previewSize.width / previewSize.height
-            )
-          : photo.uri;
-
       await new Promise((resolve) => setTimeout(resolve, SCAN_OVERLAY_DURATION_MS));
 
-      const landmarks = await analyzeHandImage(photoUri);
+      const landmarks = await analyzeHandImage(photo.uri);
       if (!landmarks || landmarks.length === 0) {
         throw new Error('no-hand-detected');
       }
 
-      onScanComplete(photoUri, landmarks);
+      onScanComplete(photo.uri, landmarks);
     } catch (error) {
-      // 02_Camera_and_AI.md: 손이 인식되지 않은 경우 예외 처리.
-      // "손 미인식"과 실제 오류(모델 로드 실패 등)를 사용자에게는 동일한 메시지로
-      // 보여주지만, 원인 파악을 위해 콘솔에는 실제 에러를 남긴다.
+      // 손 미인식과 실제 오류(모델 로드 실패 등)를 사용자에게는 동일하게 안내하되,
+      // 콘솔에는 실제 에러를 남긴다.
       console.error('analyzeHandImage failed:', error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       playErrorSound();
@@ -117,29 +145,36 @@ export const CameraScreen = ({
   }
 
   return (
-    <View style={styles.container} onLayout={handlePreviewLayout}>
+    <View style={styles.container} onLayout={handleContainerLayout}>
       <CameraView
+        key={cameraRatio}
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         facing="back"
+        zoom={0}
+        ratio={cameraRatio}
         onCameraReady={() => setIsCameraReady(true)}
       />
 
-      {/* 뒤로가기 버튼: 앱을 종료하는 대신 메인(시작) 화면으로 돌아간다 — 요즘
-          앱은 별도 종료 버튼을 두지 않는 것이 일반적이라, 앱 종료 대신 이전
-          화면으로의 이동으로 대체. */}
-      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
+      {/* 뒤로가기: 앱 종료 대신 메인(시작) 화면으로 돌아간다 */}
+      <Pressable
+        style={[
+          styles.backButton,
+          { top: insets.top + EDGE_SAFE_MARGIN, left: insets.left + EDGE_SAFE_MARGIN },
+        ]}
+        onPress={onBack}
+        hitSlop={8}
+      >
         <Ionicons name="chevron-back" size={18} color="#fff" />
         <Text style={styles.backButtonText}>{t('common.back')}</Text>
       </Pressable>
 
-      {/* washMode 토글: 화면 우하단의 작고 반투명한 원형 버튼 하나로 BEFORE/AFTER를
-          전환한다. 보건교사가 손이나 몸으로 살짝 가려서 아이들에게는 안 보이게
-          누를 수 있도록, 설명 텍스트 없이 아이콘만 있는 눈에 덜 띄는 형태로 둔다. */}
+      {/* washMode 토글: 보건교사가 눈에 덜 띄게 누를 수 있도록 아이콘만 있는 버튼 */}
       <Pressable
         style={[
           styles.washModeToggle,
           washMode === 'BEFORE' ? styles.washModeToggleBefore : styles.washModeToggleAfter,
+          { bottom: insets.bottom + EDGE_SAFE_MARGIN, right: insets.right + EDGE_SAFE_MARGIN },
         ]}
         onPress={() => onWashModeChange(washMode === 'BEFORE' ? 'AFTER' : 'BEFORE')}
         hitSlop={8}
@@ -147,28 +182,37 @@ export const CameraScreen = ({
         <Text style={styles.washModeToggleIcon}>{washMode === 'BEFORE' ? '🧼' : '✨'}</Text>
       </Pressable>
 
-      {/* 손 모양 가이드라인: GUIDE_RECT와 동일한 비율로 그려서 실제 크롭 영역과 일치시킨다 */}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <View
-          style={[
-            styles.guideShape,
-            {
-              left: `${GUIDE_RECT.x * 100}%`,
-              top: `${GUIDE_RECT.y * 100}%`,
-              width: `${GUIDE_RECT.width * 100}%`,
-              height: `${GUIDE_RECT.height * 100}%`,
-            },
-          ]}
-        />
-        <View
-          style={[
-            styles.guideTextRow,
-            { top: `${(GUIDE_RECT.y + GUIDE_RECT.height) * 100}%` },
-          ]}
-        >
-          <Text style={styles.guideText}>{t('camera.guideText')}</Text>
+      {/* 손 모양 가이드라인: 화면 전체가 아니라 실제로 카메라가 보이는
+          영역(레터박스 제외) 기준으로 GUIDE_RECT 비율만큼 그린다. */}
+      {visibleCameraRect && (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <View
+            style={[
+              styles.guideShape,
+              {
+                left: visibleCameraRect.x + GUIDE_RECT.x * visibleCameraRect.width,
+                top: visibleCameraRect.y + GUIDE_RECT.y * visibleCameraRect.height,
+                width: GUIDE_RECT.width * visibleCameraRect.width,
+                height: GUIDE_RECT.height * visibleCameraRect.height,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.guideTextRow,
+              {
+                left: visibleCameraRect.x,
+                width: visibleCameraRect.width,
+                top:
+                  visibleCameraRect.y +
+                  (GUIDE_RECT.y + GUIDE_RECT.height) * visibleCameraRect.height,
+              },
+            ]}
+          >
+            <Text style={styles.guideText}>{t('camera.guideText')}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* 촬영 버튼 */}
       <View style={styles.captureBar}>
@@ -244,8 +288,6 @@ const styles = StyleSheet.create({
   },
   washModeToggle: {
     position: 'absolute',
-    bottom: 56,
-    right: 24,
     width: 52,
     height: 52,
     borderRadius: 26,
@@ -263,8 +305,6 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: 'absolute',
-    top: 56,
-    left: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -295,8 +335,6 @@ const styles = StyleSheet.create({
   },
   guideTextRow: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     marginTop: 12,
     alignItems: 'center',
   },

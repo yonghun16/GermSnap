@@ -3,10 +3,8 @@ import type { DisplayRect } from './displayRect';
 import { distanceToSegment, isPointInPolygon } from './geometry';
 import type { Point2D } from './geometry';
 
-// MediaPipe 21개 손 랜드마크 인덱스 기준, 손가락별 뼈대 체인(밑동→끝)과
-// 손바닥 밑동을 잇는 다각형. 볼록 껍질(convex hull)은 손가락 사이 빈 공간까지
-// 채워버리고(손가락 밖으로 균이 튀어나가는 원인), 실제 손 모양과 다르게 뭉치는
-// 문제가 있어 이 방식으로 교체했다.
+// 손가락별 뼈대 체인(밑동→끝) + 손바닥 밑동을 잇는 다각형. convex hull은
+// 손가락 사이 빈 공간까지 채워버려 이 방식으로 대체했다.
 const FINGER_CHAINS = [
   [1, 2, 3, 4], // 엄지 (CMC-MCP-IP-TIP)
   [5, 6, 7, 8], // 검지

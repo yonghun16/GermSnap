@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import './src/i18n';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { HelpScreen } from './src/screens/HelpScreen';
@@ -49,42 +50,44 @@ export default function App() {
   };
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      {!hasStarted ? (
-        homeView === 'settings' ? (
-          <SettingsScreen
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {!hasStarted ? (
+          homeView === 'settings' ? (
+            <SettingsScreen
+              germDisplayMode={germDisplayMode}
+              onChangeGermDisplayMode={handleChangeGermDisplayMode}
+              onBack={() => setHomeView('main')}
+            />
+          ) : homeView === 'help' ? (
+            <HelpScreen onBack={() => setHomeView('main')} />
+          ) : (
+            <HomeScreen
+              onStart={() => setHasStarted(true)}
+              onOpenSettings={() => setHomeView('settings')}
+              onOpenHelp={() => setHomeView('help')}
+            />
+          )
+        ) : appState.photoUri ? (
+          <ResultScreen
+            photoUri={appState.photoUri}
+            washMode={appState.washMode}
+            handLandmarks={appState.handLandmarks}
+            isCleanMode={appState.isCleanMode}
             germDisplayMode={germDisplayMode}
-            onChangeGermDisplayMode={handleChangeGermDisplayMode}
-            onBack={() => setHomeView('main')}
+            onToggleCleanMode={handleToggleCleanMode}
+            onRetake={handleRetake}
           />
-        ) : homeView === 'help' ? (
-          <HelpScreen onBack={() => setHomeView('main')} />
         ) : (
-          <HomeScreen
-            onStart={() => setHasStarted(true)}
-            onOpenSettings={() => setHomeView('settings')}
-            onOpenHelp={() => setHomeView('help')}
+          <CameraScreen
+            washMode={appState.washMode}
+            onWashModeChange={(washMode) => setAppState((prev) => ({ ...prev, washMode }))}
+            onScanComplete={handleScanComplete}
+            onBack={() => setHasStarted(false)}
           />
-        )
-      ) : appState.photoUri ? (
-        <ResultScreen
-          photoUri={appState.photoUri}
-          washMode={appState.washMode}
-          handLandmarks={appState.handLandmarks}
-          isCleanMode={appState.isCleanMode}
-          germDisplayMode={germDisplayMode}
-          onToggleCleanMode={handleToggleCleanMode}
-          onRetake={handleRetake}
-        />
-      ) : (
-        <CameraScreen
-          washMode={appState.washMode}
-          onWashModeChange={(washMode) => setAppState((prev) => ({ ...prev, washMode }))}
-          onScanComplete={handleScanComplete}
-          onBack={() => setHasStarted(false)}
-        />
-      )}
-      <StatusBar style="light" />
-    </GestureHandlerRootView>
+        )}
+        <StatusBar style="light" />
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

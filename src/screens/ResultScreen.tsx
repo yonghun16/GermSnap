@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useDerivedValue,
   useSharedValue,
@@ -29,7 +30,7 @@ import { GermSprite } from '../components/GermSprite';
 import { SparkleSprite } from '../components/SparkleSprite';
 import { generateGerms, GERM_TYPE_COUNT } from '../utils/generateGerms';
 import { generateSparkles } from '../utils/generateSparkles';
-import { computeContainRect } from '../utils/displayRect';
+import { computeContainRect, computeCoverRect } from '../utils/displayRect';
 import { playCleanSound } from '../utils/sound';
 import { GERM_ASSET_MODULES, GERM_ASSET_COUNT } from '../utils/germAssets';
 import type { GermDisplayMode, Point3D, WashMode } from '../types';
@@ -45,40 +46,33 @@ interface ResultScreenProps {
 }
 
 const MIN_SCALE = 1;
-// 현미경 모드: 진짜 현미경처럼 손 피부 표면까지 파고들어 보이도록 실사용
-// 피드백에 따라 상한을 10배로 높였다 (03_Germ_and_Clean_Rendering.md 원안은 4.0x).
-// 캐릭터 모드: 사실적인 세균 사진 대신 귀여운 캐릭터 도형을 쓰는 만큼, 원안
-// 그대로 4배로 제한한다 — 저학년 등 사실적인 세균 사진을 무서워하는 아이들을
-// 위해 두 모드로 나눠 달라는 피드백에 따라 도입.
+// 현미경 모드는 피부 표면까지 파고들어 보이도록 10배까지, 캐릭터 모드는
+// 사실적인 사진이 아니라 벡터 도형이라 4배로 제한한다.
 const MICROSCOPE_MAX_SCALE = 10;
 const CHARACTER_MAX_SCALE = 4;
 
-// 세균이 "눈에 잘 안 보일 만큼 작고 투명"하게 시작해서, 확대(pinch zoom)할수록
-// 또렷하고 커지도록 하는 리빌(reveal) 효과 — 맨눈으로 안 보이는 세균을 확대해야
-// 발견한다는 컨셉.
+// 세균이 처음엔 잘 안 보일 만큼 작고 투명하다가, 확대(pinch zoom)할수록
+// 또렷해지는 리빌(reveal) 효과.
 const MIN_GERM_OPACITY_FACTOR = 0.08;
 const MIN_GERM_ZOOM_FACTOR = 0.35;
 const MAX_GERM_ZOOM_FACTOR = 1.0;
 
-// 고배율로 확대하면 사진(피부)은 원본 해상도의 한계로 깨져 보이는데 세균은
-// 별도 고화질 이미지라 계속 또렷해서 이질감이 생긴다. 사진 위·세균 아래에
-// 반투명 레이어를 깔아서 실제 현미경 조명처럼 뿌옇게 보이게 하면, 그
-// 이질감도 자연스럽게 가려진다. 실제 현미경 투과광(백라이트)은 순백색이
-// 아니라 주광색(약 6500K, 살짝 푸른 기가 도는 흰색)에 가까워서 그 색을 쓴다.
+// 고배율 확대 시 사진 해상도 한계와 세균 이미지의 선명함 사이 이질감을
+// 가리기 위한 현미경 조명(뿌연 백라이트) 효과.
 const HAZE_COLOR = '#EAF4FF';
 const MIN_HAZE_OPACITY = 0;
 const MAX_HAZE_OPACITY = 0.55;
 
-// AFTER 모드(손 씻은 후) 결과 화면 등장 연출 — 아이들에게 쾌감을 주는 화려한
-// 이펙트: 눈부신 광원을 보는 것처럼 화면 전체가 확 밝아졌다 퍼지며 사라지는
-// 플래시 블룸 + 반짝이 트윙클.
+// AFTER 모드 등장 연출: 화면이 밝아졌다 퍼지며 사라지는 플래시 + 반짝이 트윙클
 const FLASH_DURATION_MS = 900;
 const FLASH_DELAY_MS = 150;
 const TWINKLE_PERIOD_MS = 1600;
 
-// 세균이 살아서 숨을 쉬는 듯한 느낌을 주는 애니메이션 주기. BEFORE 모드에서
-// 계속 반복 재생된다 (트윙클보다 느리게, 숨쉬기처럼 은은하게).
+// 세균 숨쉬기 애니메이션 주기 (BEFORE 모드에서 계속 반복)
 const BREATHE_PERIOD_MS = 2400;
+
+// 가장자리 버튼/배너에 safe-area inset 위로 추가하는 여백 (TV 미러링 오버스캔 대응)
+const EDGE_SAFE_MARGIN = 24;
 
 export const ResultScreen = ({
   photoUri,
@@ -90,20 +84,15 @@ export const ResultScreen = ({
   onRetake,
 }: ResultScreenProps) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const maxScale = germDisplayMode === 'CHARACTER' ? CHARACTER_MAX_SCALE : MICROSCOPE_MAX_SCALE;
 
-  // 사진도 Skia 이미지로 불러온다. 확대(pinch zoom)를 RN View의 CSS 트랜스폼이
-  // 아니라 Skia 내부 Group transform으로 처리하기 위함 — CSS 트랜스폼은 이미
-  // 작게 래스터화된 결과물을 그대로 늘리기만 해서 확대할수록 흐려지지만,
-  // Skia 내부 transform은 매 프레임 원본 해상도에서 다시 그리므로 몇 배를
-  // 확대해도 선명하다 (실기기 테스트에서 CSS 방식의 흐림 문제를 확인함).
+  // Skia 내부 Group transform으로 확대를 처리해 몇 배를 확대해도 선명하게
+  // 유지한다 (RN CSS 트랜스폼은 래스터화된 결과물을 늘리기만 해서 흐려짐).
   const photoImage = useImage(photoUri);
 
-  // assets/germs/의 실제 세균 사진 10종을 전부 미리 로드해두고, 사진을 찍을
-  // 때마다(photoUri가 바뀔 때마다) 그중 GERM_TYPE_COUNT(6)개를 무작위로 골라
-  // 쓴다 — 10종을 한 손에 다 쓰면 너무 산만하지만, 매번 같은 6종만 나오면
-  // 단조로우니 매 촬영마다 다른 조합이 나오게 한다.
+  // 세균 사진 10종을 미리 로드해두고, 촬영마다 그중 6종을 무작위로 골라 쓴다.
   const germImage0 = useImage(GERM_ASSET_MODULES[0]);
   const germImage1 = useImage(GERM_ASSET_MODULES[1]);
   const germImage2 = useImage(GERM_ASSET_MODULES[2]);
@@ -138,9 +127,8 @@ export const ResultScreen = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUri]);
 
-  // Pinch(확대) + Pan(이동) 상태. 사진과 세균/반짝이를 모두 같은 Skia Group
-  // 안에서 그려서 1:1 동시 확대/축소가 이뤄지도록 한다.
-  // (docs/content/03_Germ_and_Clean_Rendering.md)
+  // Pinch(확대) + Pan(이동) 상태 — 사진과 세균/반짝이를 같은 Skia Group에서
+  // 함께 확대/이동한다.
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -181,16 +169,14 @@ export const ResultScreen = ({
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     playCleanSound();
 
-    // 화면 전체 플래시: 눈부신 광원을 보는 것처럼 한 번 0→1로 확 밝아졌다
-    // 퍼지며 사라진다.
+    // 화면 전체 플래시: 0→1로 확 밝아졌다 퍼지며 사라진다
     flashProgress.value = 0;
     flashProgress.value = withDelay(
       FLASH_DELAY_MS,
       withTiming(1, { duration: FLASH_DURATION_MS, easing: Easing.out(Easing.cubic) })
     );
 
-    // 반짝이 트윙클: 계속 0→2π를 반복하는 "시계" (sin 주기와 맞아떨어져서
-    // 반복 지점에서 끊기지 않고 자연스럽게 이어진다).
+    // 반짝이 트윙클: 계속 0→2π를 반복하는 시계 (sin 주기라 반복 지점이 안 끊김)
     twinkleClock.value = 0;
     twinkleClock.value = withRepeat(
       withTiming(Math.PI * 2, { duration: TWINKLE_PERIOD_MS, easing: Easing.linear }),
@@ -262,11 +248,9 @@ export const ResultScreen = ({
   ]);
   const contentOrigin = { x: containerSize.width / 2, y: containerSize.height / 2 };
 
-  // 세균 리빌 효과: 확대 배율(scale)을 세균 레이어의 투명도/크기 배율로 매핑한다.
-  // maxScale은 germDisplayMode(일반 prop)에서 파생된 일반 JS 값이라, 이 값이
-  // 바뀔 수 있는 한 useDerivedValue에 명시적 의존성 배열을 넘겨야 한다 —
-  // 안 그러면 훅이 처음 만들어질 때의 값에 그대로 고정되는 버그가 생긴다
-  // (이전 라이트 스윕 버그와 같은 종류).
+  // 세균 리빌 효과: 확대 배율(scale)을 세균 레이어의 투명도/크기로 매핑한다.
+  // maxScale은 germDisplayMode에서 파생되는 JS 값이라 바뀔 수 있으므로,
+  // useDerivedValue에 의존성 배열을 꼭 넘겨야 한다(안 그러면 최초 값에 고정됨).
   const germOpacityFactor = useDerivedValue(
     () => interpolate(scale.value, [MIN_SCALE, maxScale], [MIN_GERM_OPACITY_FACTOR, 1], Extrapolation.CLAMP),
     [maxScale]
@@ -288,13 +272,16 @@ export const ResultScreen = ({
     [maxScale]
   );
 
-  // 사진과 화면의 종횡비가 다를 수 있으므로(letterbox), 실제 사진이 표시되는
-  // 영역을 기준으로 정규화 좌표를 픽셀로 변환한다.
+  // 사진과 화면의 종횡비가 다를 수 있어(letterbox), 실제 표시 영역 기준으로
+  // 좌표를 변환한다. 창이 가로로 넓은 경우(DeX 등)는 레터박스가 심해지므로
+  // cover 방식(꽉 채움)을 쓴다.
   const displayRect = useMemo(() => {
     if (!photoImage || containerSize.width === 0 || containerSize.height === 0) {
       return null;
     }
-    return computeContainRect(
+    const isWideContainer = containerSize.width > containerSize.height;
+    const computeRect = isWideContainer ? computeCoverRect : computeContainRect;
+    return computeRect(
       photoImage.width(),
       photoImage.height(),
       containerSize.width,
@@ -302,12 +289,9 @@ export const ResultScreen = ({
     );
   }, [photoImage, containerSize]);
 
-  // 화면 전체 플래시: 눈부신 광원을 보는 것처럼 화면 중앙에서 원형으로
-  // 확 밝아졌다가 퍼지며 사라진다. 투명도는 초반에 확 튀어올랐다가
-  // 서서히 0으로 사라지고, 반지름은 계속 커지며 퍼져나간다.
-  // containerSize는 일반 JS state(공유값 아님)라, useDerivedValue가 최신
-  // 값을 계속 반영하도록 반드시 의존성 배열을 넘겨야 한다 — 이전 라이트
-  // 스윕 버그(레이아웃 계산 전 크기 0에 고정되는 문제)를 반복하지 않기 위함.
+  // 화면 중앙에서 원형으로 밝아졌다 퍼지며 사라지는 플래시. containerSize는
+  // JS state(공유값 아님)라 useDerivedValue에 의존성 배열을 넘겨야 최신 값을
+  // 반영한다(안 그러면 레이아웃 계산 전 크기 0에 고정됨).
   const flashOpacity = useDerivedValue(
     () => interpolate(flashProgress.value, [0, 0.12, 1], [0, 1, 0], Extrapolation.CLAMP),
     []
@@ -346,11 +330,7 @@ export const ResultScreen = ({
                   sampling={{ filter: FilterMode.Linear, mipmap: MipmapMode.Linear }}
                 />
 
-                {/* 현미경 뿌연 조명 효과: 사진(피부) 위, 세균/반짝이 아래에 깔아
-                    고배율 확대 시 사진 해상도 한계와 세균의 또렷함 사이의
-                    이질감을 자연스럽게 가린다. 캐릭터 모드는 사실적인 사진이
-                    아니라 벡터 도형을 쓰고 확대 배율도 낮아 이 이질감 자체가
-                    없으므로 현미경 모드에서만 그린다. */}
+                {/* 현미경 조명 효과 — 캐릭터 모드는 벡터 도형이라 필요 없음 */}
                 {germDisplayMode === 'MICROSCOPE' && (
                   <Rect
                     x={displayRect.x}
@@ -404,12 +384,7 @@ export const ResultScreen = ({
                 ))}
               </Group>
 
-              {/* 화면 전체 플래시: 눈부신 광원을 보는 것처럼 화면 중앙에서
-                  원형으로 확 밝아졌다 퍼지며 사라진다. 화면 확대/이동과는
-                  무관한 좌표계라 Group 바깥(트랜스폼 영향 밖)에 그린다.
-                  Circle과 RadialGradient가 같은 flashRadius 공유값을 써서,
-                  둘의 크기가 어긋나 그라데이션이 도중에 끊기는 것처럼 보이는
-                  버그(이전 라이트 스윕에서 겪음)를 반복하지 않는다. */}
+              {/* 화면 전체 플래시 — 확대/이동과 무관한 좌표계라 Group 바깥에 그린다 */}
               {washMode === 'AFTER' && (
                 <Group opacity={flashOpacity}>
                   <Circle cx={flashCenter.x} cy={flashCenter.y} r={flashRadius}>
@@ -433,19 +408,31 @@ export const ResultScreen = ({
 
       {/* 확대/이동의 영향을 받지 않는 고정 UI */}
       {washMode === 'AFTER' && (
-        <View style={styles.praiseBanner} pointerEvents="none">
+        <View
+          style={[styles.praiseBanner, { top: insets.top + 60 + EDGE_SAFE_MARGIN }]}
+          pointerEvents="none"
+        >
           <Text style={styles.praiseText}>{t('result.praise')}</Text>
         </View>
       )}
 
-      <Pressable style={styles.retakeButton} onPress={onRetake}>
+      <Pressable
+        style={[
+          styles.retakeButton,
+          { top: insets.top + EDGE_SAFE_MARGIN, left: insets.left + EDGE_SAFE_MARGIN },
+        ]}
+        onPress={onRetake}
+      >
         <Ionicons name="refresh" size={16} color="#fff" />
         <Text style={styles.retakeButtonText}>{t('common.retake')}</Text>
       </Pressable>
 
       {/* 우하단 히든 버튼: 보건교사용 Clean Mode 강제 토글 (거의 안 보이는 opacity) */}
       <Pressable
-        style={styles.hiddenButton}
+        style={[
+          styles.hiddenButton,
+          { bottom: insets.bottom + EDGE_SAFE_MARGIN, right: insets.right + EDGE_SAFE_MARGIN },
+        ]}
         onPress={onToggleCleanMode}
         hitSlop={12}
         accessibilityElementsHidden
@@ -463,7 +450,6 @@ const styles = StyleSheet.create({
   },
   praiseBanner: {
     position: 'absolute',
-    top: 116,
     left: 20,
     right: 20,
     alignItems: 'center',
@@ -480,8 +466,6 @@ const styles = StyleSheet.create({
   },
   retakeButton: {
     position: 'absolute',
-    top: 56,
-    left: 20,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -505,8 +489,6 @@ const styles = StyleSheet.create({
   },
   hiddenButton: {
     position: 'absolute',
-    bottom: 16,
-    right: 16,
     width: 30,
     height: 30,
     opacity: 0.03,

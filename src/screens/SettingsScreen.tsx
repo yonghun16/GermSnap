@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { GermDisplayMode } from '../types';
 
@@ -19,9 +20,7 @@ interface ModeOption {
   renderIcon: (color: string) => React.ReactNode;
 }
 
-// 03_Germ_and_Clean_Rendering.md의 세균 컴포넌트 이원화 구조(실제 사진 vs
-// 벡터 도형)를 그대로 두 "모드"로 승격한 것 — 사실적인 세균 사진을 무서워하는
-// 아이들을 위해 귀여운 캐릭터 도형만 보여주는 모드를 따로 두라는 피드백에 따름.
+// 사실적인 세균 사진을 무서워하는 아이들을 위해 캐릭터(벡터 도형) 모드를 따로 둔다
 const MODE_OPTIONS: ModeOption[] = [
   {
     mode: 'MICROSCOPE',
@@ -47,9 +46,14 @@ export const SettingsScreen = ({
   onBack,
 }: SettingsScreenProps) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.container}>
-      <Pressable style={styles.backButton} onPress={onBack} hitSlop={8}>
+      <Pressable
+        style={[styles.backButton, { marginTop: insets.top + 24, marginLeft: insets.left + 16 }]}
+        onPress={onBack}
+        hitSlop={8}
+      >
         <Ionicons name="chevron-back" size={20} color="#263238" />
         <Text style={styles.backButtonText}>{t('common.back')}</Text>
       </Pressable>
@@ -95,8 +99,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginTop: 56,
-    marginLeft: 16,
     paddingVertical: 8,
     paddingRight: 8,
   },
